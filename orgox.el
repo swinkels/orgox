@@ -91,7 +91,4 @@
     (with-current-buffer (find-file-noselect ox-hugo-file)
       (org-hugo-export-wim-to-md :all-subtrees))))
 
-(with-current-buffer (get-buffer "20241224.org")
-  (orgox-publish-current-buffer))
-
 ;;; orgox.el ends here
