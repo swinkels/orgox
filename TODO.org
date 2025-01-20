@@ -1,0 +1,95 @@
+- [ ] support links to additional files
+- [ ] support use of images
+- [ ] use sections to create URLs with ~YYYY/MM/DD/<title>~
+
+* [2025-01-20 Mon]
+
+- [X] add unit tests
+
+I added a single unit test that tests the creation of an ox-hugo post from a
+note. This sets up the required test scaffolding and tests one of the main
+functions. This is enough for now.
+
+* [2025-01-19 Sun]
+
+In general, each of my notes consists of an org file org and, in case a note
+links to a local file, a directory at the same level as the org file with these
+local files. Here the org file and directory are named after the date of the
+note, for example ~20240724.org~ and ~20240724/~. In general, I use the
+following format for these local links:
+#+begin_example
+[[file:20240724/emacs-29.2.scm][here]]
+#+end_example
+
+ox-hugo correctly exports this link to
+#+begin_example
+[here](20240724/emacs-29.2.scm)
+#+end_example
+However, ox-hugo does not automatically export the local files and you end up
+with a broken link.
+
+ox-hugo does support the export of local files but only for files with a certain
+extension[fn:1]. Although you can configure the list of supported extensions is
+configurable, I did not want to be limit myself to an ever growing list. So
+after some trial and error I settled for the following approach. First, in the
+~.ox-hugo.org~ file let the link refer to the root of the exported site, for
+example
+#+begin_example
+[[file:/20240724/emacs-29.2.scm][here]]
+#+end_example
+Note the extra ~/~ at the start of the link. Then, copy the folder with the
+local files to directory ~static/ox-hugo~ in the root of the Hugo site
+repository[fn:2]. So for a local folder ~20240724~, copy it to
+#+begin_example
+<Hugo site repository root>/static/ox-hugo/20240724
+#+end_example
+
+** Caveats
+
+The first caveat took me quite some time: org-hugo only seems to support named
+links to local files. I started out with a link like this
+#+begin_example
+[[20240724/emacs-29.2.scm]]
+#+end_example
+and then org-hugo assumes it's a link to the headline ~20240724/emacs-29.2.scm~
+in the same org-file. It aborts the export if no such headline exists.
+
+I also tried the following variations on the link above and they all didn't
+work:
+#+begin_example
+[[/20240724/emacs-29.2.scm]]
+[[file:20240724/emacs-29.2.scm]]
+[[file:/20240724/emacs-29.2.scm]]
+#+end_example
+org-hugo exports them as
+#+begin_example
+</20240724/emacs-29.2.scm>
+<20240724/emacs-29.2.scm>
+</20240724/emacs-29.2.scm>
+#+end_example
+In Markdown, these are just text, not links.
+
+Furthermore, links to local files do not work for links to org-more files. For
+example, org-hugo exports
+#+begin_example
+[[/20240724/hello.org][20240724/hello.org]]
+#+end_example
+as
+#+begin_example
+[20240324/hello.org]({{< relref "hello" >}})
+#+end_example
+This makes the Hugo site itself bork. I haven't looked into this but my gut
+feeling tells me that org-hugo assumes that any org-file is another top-level
+org-file.
+
+Finally, links to local directories don't work. As a workaround, I can link to
+the directory in my GitHub repo:
+
+https://github.com/swinkels/notes/tree/main/2024/07/24/20240724
+
+[fn:1] The local files that org-hugo exports need to have an extension that is
+specified by ~org-hugo-external-file-extensions-allowed-for-copying~, see the
+ox-hugo documentation on [[https://ox-hugo.scripter.co/doc/image-links/][image links]] for details.
+
+[fn:2] Here the name of the ~static~ subfolder is ~org-hugo~. The actual name is
+configured through ~org-hugo-default-static-subdirectory-for-externals~.
