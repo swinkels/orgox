@@ -1,0 +1,13 @@
+#+HUGO_BASE_DIR: ../
+
+#+PROPERTY: header-args :eval never
+
+* 1st heading This will become the title of the post              :tag0:tag1:
+:PROPERTIES:
+:EXPORT_FILE_NAME: 1st-heading-this-will-become-the-title-of-the-post
+:EXPORT_DATE: 2025-01-19
+:END:
+
+** 1st subheading
+
+** 2nd subheading

@@ -12,3 +12,6 @@
 (source "gnu")
 
 (depends-on "emacs" "26.1")
+
+(development
+ (depends-on "f"))
