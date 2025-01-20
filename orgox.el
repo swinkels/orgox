@@ -43,10 +43,6 @@
   "Directory of ox-hugo site to hold org-files to publish."
   :type 'directory :group 'orgox)
 
-(defun demote-subtree-at-line (line-number)
-  (goto-line line-number)
-  (org-demote-subtree))
-
 (defun slug-for-current-heading ()
   (let ((heading (nth 4 (org-heading-components))))
     (string-replace " " "-" (downcase heading))))
@@ -75,18 +71,7 @@
     ;; let the first headline provide the title
     (org-next-visible-heading 1)
     (org-set-property "EXPORT_FILE_NAME" (slug-for-current-heading))
-    (org-set-property "EXPORT_DATE" (extract-date (buffer-name org-buffer)))
-
-    ;; make the rest of the buffer a subtree of the first headline
-    ;;
-    ;; To do so, we demote the headlines that are at the same level as the first
-    ;; headline. Of course this only works if they are at the same level or
-    ;; lower.
-    ;; (let ((line-numbers))
-    ;;   (while (org-get-next-sibling)
-    ;;     (add-to-list 'line-numbers (line-number-at-pos) t))
-    ;;   (mapc 'demote-subtree-at-line line-numbers))))
-    ))
+    (org-set-property "EXPORT_DATE" (extract-date (buffer-name org-buffer)))))
 
 (defun write-as-ox-hugo-file (org-buffer dest-dir)
   (let* ((ox-hugo-file-name (get-ox-hugo-file-name (buffer-name org-buffer)))
