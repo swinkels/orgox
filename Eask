@@ -1,3 +1,5 @@
+;;; -*- mode: emacs-lisp -*-
+
 (package "orgox"
          "0.1.0"
          "Convert org-mode file to one suited for ox-hugo")
