@@ -5,13 +5,20 @@
 
 (defvar test-directory (file-name-concat default-directory "test"))
 
+(defun verify-error-string (buffer-name error-string)
+  (let ((expected-error-string
+         (format "Unable to extract date elements from \"%s\"" buffer-name)))
+    (should (string= expected-error-string error-string))))
+
 (ert-deftest test-extract-date()
   (should (string= (extract-date "20250111.org") "2025-01-11"))
 
   ;; the buffer name without extension should consist of 8 digits: if you pass
-  ;; anything else, it will return a string that indicates an error
-  (should (string= (extract-date "abcdefgh.org") "Unable to extract date"))
-  (should (string= (extract-date "*Messages*") "Unable to extract date")))
+  ;; anything else, it will signal an error
+
+  (dolist (buffer-name (list "abcdefgh.org" "*Messages*"))
+    (let ((err  (should-error (extract-date buffer-name) :type 'error)))
+      (verify-error-string buffer-name (error-message-string err)))))
 
 (ert-deftest test-orgox-current-buffer-to-ox-hugo()
   (let ((org-file (file-name-concat test-directory "20250119.org"))

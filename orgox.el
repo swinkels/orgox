@@ -48,30 +48,39 @@
     (string-replace " " "-" (downcase heading))))
 
 (defun extract-date (buffer-name)
+  (let ((elements (extract-date-elements buffer-name)))
+    (format "%s-%s-%s" (nth 0 elements) (nth 1 elements) (nth 2 elements))))
+
+(defun extract-date-sections (buffer-name)
+  (let ((elements (extract-date-elements buffer-name)))
+    (format "posts/%s/%s/%s" (nth 0 elements) (nth 1 elements) (nth 2 elements))))
+
+(defun extract-date-elements (buffer-name)
   (if (string-match-p "^20[[:digit:]]\\{6\\}$" (file-name-sans-extension buffer-name))
-      (concat
+      (list
        (substring buffer-name 0 4)
-       "-"
        (substring buffer-name 4 6)
-       "-"
        (substring buffer-name 6 8))
-    "Unable to extract date"))
+    (error (format "Unable to extract date elements from \"%s\"" buffer-name))))
 
 (defun get-ox-hugo-file-name (org-buffer-name)
   (concat (file-name-sans-extension org-buffer-name) ".ox-hugo.org"))
 
 (defun write-as-ox-hugo-buffer (org-buffer ox-hugo-buffer)
-  (with-current-buffer ox-hugo-buffer
-    (erase-buffer)
-    (insert-buffer org-buffer)
-    (beginning-of-buffer)
-    (insert "#+HUGO_BASE_DIR: ../")
-    (newline 2)
+  (let ((org-buffer-name (buffer-name org-buffer)))
+    (with-current-buffer ox-hugo-buffer
+      (erase-buffer)
+      (insert-buffer org-buffer)
+      (beginning-of-buffer)
+      (insert "#+HUGO_BASE_DIR: ../\n")
+      (insert
+       (format "#+HUGO_SECTION: %s\n" (extract-date-sections org-buffer-name)))
+      (newline 1)
 
-    ;; let the first headline provide the title
-    (org-next-visible-heading 1)
-    (org-set-property "EXPORT_FILE_NAME" (slug-for-current-heading))
-    (org-set-property "EXPORT_DATE" (extract-date (buffer-name org-buffer)))))
+      ;; let the first headline provide the title
+      (org-next-visible-heading 1)
+      (org-set-property "EXPORT_FILE_NAME" (slug-for-current-heading))
+      (org-set-property "EXPORT_DATE" (extract-date org-buffer-name)))))
 
 (defun write-as-ox-hugo-file (org-buffer dest-dir)
   (let* ((ox-hugo-file-name (get-ox-hugo-file-name (buffer-name org-buffer)))

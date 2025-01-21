@@ -1,4 +1,5 @@
 #+HUGO_BASE_DIR: ../
+#+HUGO_SECTION: posts/2025/01/19
 
 #+PROPERTY: header-args :eval never
 

@@ -1,6 +1,13 @@
+- [ ] use ~org-hugo-default-section-directory~ to retrieve top-level section
+
+Currently orgox hardcodes the top-level section to "posts".
+
 - [ ] support links to additional files
 - [ ] support use of images
-- [ ] use sections to create URLs with ~YYYY/MM/DD/<title>~
+
+* [2025-01-21 Tue]
+
+- [X] use sections to create URLs with ~YYYY/MM/DD/<title>~
 
 * [2025-01-20 Mon]
 
