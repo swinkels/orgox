@@ -1,0 +1,4 @@
+This note is used to test that orgox updates "links" to a local subdirectory
+whose name is equal to the node date. The word is quoted because it only has to
+resemble a link. So something like file:20250125/hello.txt should be updated to
+file:/20250125/hello.txt - here, note the extra ~/~ in the file.

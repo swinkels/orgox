@@ -1,9 +1,17 @@
+- [ ] configure Eask to install pinned version
 - [ ] use ~org-hugo-default-section-directory~ to retrieve top-level section
 
 Currently orgox hardcodes the top-level section to "posts".
 
-- [ ] support links to additional files
 - [ ] support use of images
+- [ ] support links to additional files
+
+* [2025-01-24 Fri]
+
+- [ ] support links to additional files
+
+I implemented the functions to sync the directory of local files to the Hugo
+static subdirectory for external files.
 
 * [2025-01-21 Tue]
 

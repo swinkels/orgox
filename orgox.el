@@ -4,9 +4,9 @@
 
 ;; Author: Pieter Swinkels <swinkels.pieter@yahoo.com>
 ;; Maintainer: Pieter Swinkels <swinkels.pieter@yahoo.com>
-;; URL:
+;; URL: https://github.com/swinkels/orgox
 ;; Version: 0.1.0
-;; Package-Requires: ((emacs "26.1"))
+;; Package-Requires: ((emacs "26.3") (f "0.20.0") (ox-hugo "0.12.2"))
 ;; Keywords: tools ox-hugo
 
 ;; This file is not part of GNU Emacs.
@@ -31,17 +31,21 @@
 
 ;;; Code:
 
-;; Happy coding! ;)
-
 (provide 'orgox)
 
 (defcustom orgox nil
   "Convert org-mode file to one suitable for publishing by ox-hugo."
   :group 'Tools)
 
+(defcustom orgox-hugo-site-directory nil
+  "Directory of ox-hugo site."
+  :type 'directory :group 'orgox)
+
 (defcustom orgox-content-org-directory nil
   "Directory of ox-hugo site to hold org-files to publish."
   :type 'directory :group 'orgox)
+
+;;;; Public definitions
 
 (defun orgox-publish-current-buffer ()
   (interactive)
@@ -52,6 +56,23 @@
 (defun orgox-current-buffer-to-ox-hugo ()
   (interactive)
   (write-as-ox-hugo-file (current-buffer) orgox-content-org-directory))
+
+(defun orgox-sync-note-dir ()
+  (unless orgox-hugo-site-directory
+    (error "Hugo site directory is not configured (orgox-hugo-site-directory)"))
+
+  (unless (f-directory-p orgox-hugo-site-directory)
+    (error (format
+            "Hugo site directory %s does not exist (orgox-hugo-site-directory)"
+            orgox-hugo-site-directory)))
+
+  (let* ((static-subdir-name org-hugo-default-static-subdirectory-for-externals)
+         (static-dir
+          (file-name-concat orgox-hugo-site-directory "static" static-subdir-name)))
+
+    (orgox--sync-note-dir (current-buffer) static-dir)))
+
+;;;; Private definitions orgox-current-buffer-to-ox-hugo
 
 (defun write-as-ox-hugo-file (org-buffer dest-dir)
   (let* ((ox-hugo-file-name (get-ox-hugo-file-name (buffer-name org-buffer)))
@@ -99,5 +120,19 @@
 (defun slug-for-current-heading ()
   (let ((heading (nth 4 (org-heading-components))))
     (string-replace " " "-" (downcase heading))))
+
+;;;; Private definitions orgox-sync-note-dir
+
+(defun orgox--sync-note-dir (org-buffer ox-hugo-externals-dir)
+  (let* ((note-dir-name (file-name-sans-extension (buffer-name org-buffer)))
+         (note-dir (file-name-concat (f-dirname (buffer-file-name)) note-dir-name)))
+    (when (f-directory-p note-dir)
+      (orgox--one-way-sync note-dir ox-hugo-externals-dir))))
+
+(defun orgox--one-way-sync (src-dir dest-dir)
+  ;; make sure the directory target directory exists otherwise rsync will fail
+  (f-mkdir-full-path dest-dir)
+  (call-process "rsync" nil "orgox-process" nil "-Cavz" src-dir dest-dir))
+
 
 ;;; orgox.el ends here
