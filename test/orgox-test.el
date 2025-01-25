@@ -50,59 +50,38 @@
 ;;;; Tests for orgox--export-to-note-file
 
 (ert-deftest test-orgox--export-to-note-file()
-  (let ((note-file (file-name-concat test-directory "20250119.org"))
-        (ox-hugo-note-file (file-name-concat temporary-file-directory "content-org" "20250119.ox-hugo.org")))
-
-    ;; delete any pre-existing output file - this is a very poor-mans solution
-    ;; to a teardown phase
-    (when (file-exists-p ox-hugo-note-file)
-      (delete-file ox-hugo-note-file))
-
+  (let ((note-file (f-join test-directory "20250119.org"))
+        (expected-ox-hugo-note-file (f-join test-directory "20250119.ox-hugo.org")))
     (with-current-buffer (find-file-noselect note-file)
-      (let ((orgox-hugo-site-directory temporary-file-directory))
-        (orgox--export-to-note-file)))
-
-    (should (file-readable-p ox-hugo-note-file))
-
-    (let ((expected-ox-hugo-note-file (file-name-concat test-directory "20250119.ox-hugo.org")))
-
-      (should (string= (f-read expected-ox-hugo-note-file) (f-read ox-hugo-note-file))))))
+      (with-temp-hugo-site
+       (progn
+         (orgox--export-to-note-file)
+         (let ((ox-hugo-note-file (f-join orgox-hugo-site-directory "content-org/20250119.ox-hugo.org")))
+           (should (file-readable-p ox-hugo-note-file))
+           (should (string= (f-read expected-ox-hugo-note-file)
+                            (f-read ox-hugo-note-file)))))))))
 
 ;;;; Tests for orgox--sync-note-dir
 
 (ert-deftest test-orgox--sync-note-dir()
-  ;; delete any pre-existing output dir - this is a very poor-mans solution
-  ;; to a teardown phase
-  (when (file-directory-p (file-name-concat temporary-file-directory "static"))
-    (delete-directory (file-name-concat temporary-file-directory "static") t))
-
-  (let ((orgox-hugo-site-directory temporary-file-directory)
-        (org-file (file-name-concat test-directory "20250119.org")))
-
-    (with-current-buffer (find-file-noselect org-file)
-      (orgox--sync-note-dir)))
-
-  (let ((ox-hugo-note-dir
-         (file-name-concat temporary-file-directory "static" "ox-hugo" "20250119")))
-
-    (should (f-directory-p ox-hugo-note-dir))
-    (should (f-exists-p (file-name-concat ox-hugo-note-dir "hello.txt")))))
+  (let ((note-file (f-join test-directory "20250119.org")))
+    (with-current-buffer (find-file-noselect note-file)
+      (with-temp-hugo-site
+       (progn
+         (orgox--sync-note-dir)
+         (should (f-exists-p (f-join orgox-hugo-site-directory
+                                     "static/ox-hugo/20250119/hello.txt"))))))))
 
 (ert-deftest test-orgox--sync-note-dir-that-does-not-exist()
-
-  (let ((orgox-hugo-site-directory temporary-file-directory)
-        (org-file (file-name-concat test-directory "20250124.org")))
-
-    (cl-letf (((symbol-function 'one-way-sync-dir)
-               (lambda () (error "one-way-sync-dir should not been called"))))
-
-      (with-current-buffer (find-file-noselect org-file)
-        (orgox--sync-note-dir))))
-
-  (let ((ox-hugo-note-dir
-         (file-name-concat temporary-file-directory "static" "ox-hugo" "20250124")))
-
-    (should-not (f-directory-p ox-hugo-note-dir))))
+  (let ((note-file (f-join test-directory "20250124.org")))
+    (with-current-buffer (find-file-noselect note-file)
+      (with-temp-hugo-site
+       (progn
+         (cl-letf (((symbol-function 'one-way-sync-dir)
+                    (lambda () (error "one-way-sync-dir should not been called"))))
+           (orgox--sync-note-dir))
+         (should-not (f-exists-p (f-join orgox-hugo-site-directory
+                                         "static/ox-hugo/20250124"))))))))
 
 ;;;; Tests for orgox--update-local-links
 
@@ -116,5 +95,54 @@
              (file-name-concat test-directory "20250125.ox-hugo.org")))
 
         (should (string= (f-read expected-ox-hugo-org-file) (buffer-string)))))))
+
+
+;;;; Support
+
+(defmacro with-temp-hugo-site (body)
+  `(let* ((root-tmp-dir temporary-file-directory)
+          (orgox-hugo-site-directory (f-join root-tmp-dir (make-temp-name "orgox-"))))
+
+     ;; safeguard that we will be using a new directory
+     (unless (not (f-exists-p orgox-hugo-site-directory))
+       (error (format "Proposed Hugo site directory %s already exists"
+                      orgox-hugo-site-directory)))
+     (f-mkdir-full-path orgox-hugo-site-directory)
+     (f-mkdir-full-path (f-join orgox-hugo-site-directory "content-org"))
+
+     (unwind-protect
+         ,body
+       (progn
+
+         ;; safeguard that we will be deleting a temporary directory
+         (unless (f-descendant-of-p orgox-hugo-site-directory root-tmp-dir)
+           (error (format
+                   "Hugo site directory to delete %s does not seem a temporary directory"
+                   orgox-hugo-site-directory)))
+
+         (f-delete orgox-hugo-site-directory t)))))
+
+(ert-deftest test-with-temp-hugo-site()
+  (let ((temp-hugo-site-dir nil))
+    (with-temp-hugo-site
+     (progn
+       (should (f-descendant-of-p orgox-hugo-site-directory temporary-file-directory))
+       (should (f-directory-p orgox-hugo-site-directory))
+       (should (f-writable-p orgox-hugo-site-directory))
+       (should (f-directory-p (f-join orgox-hugo-site-directory "content-org")))
+       (should (f-writable-p (f-join orgox-hugo-site-directory "content-org")))
+       (setq temp-hugo-site-dir orgox-hugo-site-directory)))
+    (should-not (f-exists-p temp-hugo-site-dir))))
+
+(ert-deftest test-with-temp-hugo-site-deletes-dir-in-case-of-error()
+  (let* ((err (should-error (error-from-with-temp-hugo-site)))
+         (temp-hugo-site-dir (error-message-string err)))
+    (should (f-descendant-of-p temp-hugo-site-dir temporary-file-directory))
+    (should-not (f-exists-p temp-hugo-site-dir))))
+
+(defun error-from-with-temp-hugo-site()
+  (with-temp-hugo-site
+   (progn
+     (error orgox-hugo-site-directory))))
 
 ;;; orgox-test.el ends here

@@ -131,8 +131,10 @@
   (concat (f-no-ext note-buffer-name) ".ox-hugo.org"))
 
 (defun orgox--get-ox-hugo-file (note-buffer-name)
-  (file-name-concat orgox-hugo-site-directory "static" org-hugo-default-static-subdirectory-for-externals)
-  (concat (f-no-ext note-buffer-name) ".ox-hugo.org"))
+  (f-join orgox-hugo-site-directory
+          "static"
+          org-hugo-default-static-subdirectory-for-externals
+          (orgox--get-ox-hugo-file-name)))
 
 (defun orgox--extract-date-elements (buffer-name)
   (if (string-match-p "^20[[:digit:]]\\{6\\}$" (f-no-ext buffer-name))
