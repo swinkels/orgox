@@ -33,6 +33,8 @@
 
 (provide 'orgox)
 
+;;;; Public definitions
+
 (defcustom orgox nil
   "Convert org-mode file to one suitable for publishing by ox-hugo."
   :group 'Tools)
@@ -41,98 +43,147 @@
   "Directory of ox-hugo site."
   :type 'directory :group 'orgox)
 
-(defcustom orgox-content-org-directory nil
-  "Directory of ox-hugo site to hold org-files to publish."
-  :type 'directory :group 'orgox)
-
-;;;; Public definitions
-
 (defun orgox-publish-current-buffer ()
   (interactive)
-  (let ((ox-hugo-file (orgox-current-buffer-to-ox-hugo)))
+  (let ((ox-hugo-file (orgox--export-to-note-file)))
     (with-current-buffer (find-file-noselect ox-hugo-file)
       (org-hugo-export-wim-to-md :all-subtrees))))
 
-(defun orgox-current-buffer-to-ox-hugo ()
+(defun orgox-export-note-current-buffer ()
   (interactive)
-  (write-as-ox-hugo-file (current-buffer) orgox-content-org-directory))
+  (orgox-export-note-buffer (current-buffer)))
 
-(defun orgox-sync-note-dir ()
+(defun orgox-export-note-file (note-file)
+  (interactive)
+  (orgox-export-note-buffer (find-file-select note-file)))
+
+(defun orgox-export-note-buffer (note-buffer)
+  (interactive)
+
   (unless orgox-hugo-site-directory
-    (error "Hugo site directory is not configured (orgox-hugo-site-directory)"))
+    (error "Hugo site directory is not configured"))
 
   (unless (f-directory-p orgox-hugo-site-directory)
-    (error (format
-            "Hugo site directory %s does not exist (orgox-hugo-site-directory)"
-            orgox-hugo-site-directory)))
+    (error (format "Hugo site directory %s does not exist" orgox-hugo-site-directory)))
 
-  (let* ((static-subdir-name org-hugo-default-static-subdirectory-for-externals)
-         (static-dir
-          (file-name-concat orgox-hugo-site-directory "static" static-subdir-name)))
+  (let ((content-dir (orgox--get-ox-hugo-content-dir)))
+    (when (f-exists-p content-dir)
+      (unless (and (f-directory-p content-dir) (f-writable-p content-dir))
+        (error
+         (format
+          "Hugo subdirectory for org-mode content %s should be a writable directory"
+          content-dir)))))
 
-    (orgox--sync-note-dir (current-buffer) static-dir)))
+  (unless org-hugo-default-static-subdirectory-for-externals
+    (error "Hugo subdirectory for static externals is not configured"))
 
-;;;; Private definitions orgox-current-buffer-to-ox-hugo
+  (let ((static-externals-dir (orgox--get-ox-hugo-static-externals-dir)))
+    (when (f-exists-p static-externals-dir)
+      (unless (and (f-directory-p static-externals-dir) (f-writable-p static-externals-dir))
+        (error
+         (format
+          "Hugo subdirectory for static externals %s should be a writable directory"
+          static-externals-dir)))))
 
-(defun write-as-ox-hugo-file (org-buffer dest-dir)
-  (let* ((ox-hugo-file-name (get-ox-hugo-file-name (buffer-name org-buffer)))
-         (ox-hugo-file (file-name-concat dest-dir ox-hugo-file-name)))
+  (let ((note-buffer-name (buffer-name note-buffer)))
+    (unless (orgox--extract-date-elements note-buffer-name)
+      (error (format "Unable to extract date elements from \"%s\"" note-buffer-name))))
+
+  ;; create the directories to hold the org-mode content and the static files
+  (f-mkdir-full-path (orgox--get-ox-hugo-content-dir))
+  (f-mkdir-full-path (orgox--get-ox-hugo-static-externals-dir))
+
+  (orgox--export-note-buffer note-buffer))
+
+;;;; Implementation orgox--export-note-buffer
+
+(defun orgox--export-note-buffer (note-buffer)
+  (with-current-buffer note-buffer
+    (orgox--export-to-note-file)
+    (orgox--sync-note-dir)))
+
+;;;; Implementation orgox--export-to-note-file
+
+(defun orgox--export-to-note-file ()
+  (let* ((note-buffer (current-buffer))
+         (note-buffer-name (buffer-name note-buffer))
+         (date-elements (orgox--extract-date-elements note-buffer-name))
+         (ox-hugo-file-name (orgox--get-ox-hugo-file-name note-buffer-name))
+         (ox-hugo-file (f-join (orgox--get-ox-hugo-content-dir) ox-hugo-file-name)))
     (with-current-buffer (find-file-noselect ox-hugo-file)
-      (write-as-ox-hugo-buffer org-buffer (current-buffer))
-      (save-buffer))
-    ox-hugo-file))
-
-(defun write-as-ox-hugo-buffer (org-buffer ox-hugo-buffer)
-  (let ((org-buffer-name (buffer-name org-buffer)))
-    (with-current-buffer ox-hugo-buffer
       (erase-buffer)
-      (insert-buffer org-buffer)
+      (insert-buffer note-buffer)
       (beginning-of-buffer)
+
       (insert "#+HUGO_BASE_DIR: ../\n")
-      (insert
-       (format "#+HUGO_SECTION: %s\n" (extract-date-sections org-buffer-name)))
-      (newline 1)
+      (insert (format "#+HUGO_SECTION: %s\n\n" (orgox--as-date-sections date-elements)))
 
       ;; let the first headline provide the title
       (org-next-visible-heading 1)
-      (org-set-property "EXPORT_FILE_NAME" (slug-for-current-heading))
-      (org-set-property "EXPORT_DATE" (extract-date org-buffer-name)))))
+      (org-set-property "EXPORT_FILE_NAME" (orgox--slug-for-current-heading))
+      (org-set-property "EXPORT_DATE" (orgox--as-date date-elements))
 
-(defun extract-date-sections (buffer-name)
-  (let ((elements (extract-date-elements buffer-name)))
-    (format "posts/%s/%s/%s" (nth 0 elements) (nth 1 elements) (nth 2 elements))))
+      (orgox--update-local-links note-buffer-name)
 
-(defun extract-date-elements (buffer-name)
-  (if (string-match-p "^20[[:digit:]]\\{6\\}$" (file-name-sans-extension buffer-name))
+      (save-buffer))))
+
+(defun orgox--get-ox-hugo-file-name (note-buffer-name)
+  (concat (f-no-ext note-buffer-name) ".ox-hugo.org"))
+
+(defun orgox--get-ox-hugo-file (note-buffer-name)
+  (file-name-concat orgox-hugo-site-directory "static" org-hugo-default-static-subdirectory-for-externals)
+  (concat (f-no-ext note-buffer-name) ".ox-hugo.org"))
+
+(defun orgox--extract-date-elements (buffer-name)
+  (if (string-match-p "^20[[:digit:]]\\{6\\}$" (f-no-ext buffer-name))
       (list
        (substring buffer-name 0 4)
        (substring buffer-name 4 6)
        (substring buffer-name 6 8))
-    (error (format "Unable to extract date elements from \"%s\"" buffer-name))))
+    nil))
 
-(defun extract-date (buffer-name)
-  (let ((elements (extract-date-elements buffer-name)))
-    (format "%s-%s-%s" (nth 0 elements) (nth 1 elements) (nth 2 elements))))
+(defun orgox--as-date-sections (date-elements)
+  (format "%s/%s/%s/%s"
+          org-hugo-section
+          (nth 0 date-elements)
+          (nth 1 date-elements)
+          (nth 2 date-elements)))
 
-(defun get-ox-hugo-file-name (org-buffer-name)
-  (concat (file-name-sans-extension org-buffer-name) ".ox-hugo.org"))
+(defun orgox--as-date (date-elements)
+  (format "%s-%s-%s"
+          (nth 0 date-elements)
+          (nth 1 date-elements)
+          (nth 2 date-elements)))
 
-(defun slug-for-current-heading ()
+(defun orgox--update-local-links (note-buffer-name)
+  (let ((note-name (f-no-ext note-buffer-name)))
+    (while (re-search-forward (format "file:%s" note-name) nil t)
+      (replace-match (format "file:/%s" note-name)))))
+
+(defun orgox--slug-for-current-heading ()
   (let ((heading (nth 4 (org-heading-components))))
     (string-replace " " "-" (downcase heading))))
 
-;;;; Private definitions orgox-sync-note-dir
+;;;; Implementation orgox--sync-note-dir
 
-(defun orgox--sync-note-dir (org-buffer ox-hugo-externals-dir)
-  (let* ((note-dir-name (file-name-sans-extension (buffer-name org-buffer)))
-         (note-dir (file-name-concat (f-dirname (buffer-file-name)) note-dir-name)))
+(defun orgox--sync-note-dir ()
+  (let* ((note-dir-name (f-no-ext (buffer-file-name)))
+         (note-dir (f-join (f-dirname (buffer-file-name)) note-dir-name)))
     (when (f-directory-p note-dir)
-      (orgox--one-way-sync note-dir ox-hugo-externals-dir))))
+      (orgox--one-way-sync note-dir (orgox--get-ox-hugo-static-externals-dir)))))
 
 (defun orgox--one-way-sync (src-dir dest-dir)
   ;; make sure the directory target directory exists otherwise rsync will fail
   (f-mkdir-full-path dest-dir)
   (call-process "rsync" nil "orgox-process" nil "-Cavz" src-dir dest-dir))
 
+(defun orgox--get-ox-hugo-static-externals-dir ()
+  (let ((static-subdir-name org-hugo-default-static-subdirectory-for-externals))
+    (f-join orgox-hugo-site-directory "static" static-subdir-name)))
+
+;;;; Shared
+
+(defun orgox--get-ox-hugo-content-dir ()
+  (f-join orgox-hugo-site-directory "content-org"))
 
 ;;; orgox.el ends here
