@@ -55,7 +55,7 @@
 
 (defun orgox-export-note-file (note-file)
   (interactive)
-  (orgox-export-note-buffer (find-file-select note-file)))
+  (orgox-export-note-buffer (find-file-noselect note-file)))
 
 (defun orgox-export-note-buffer (note-buffer)
   (interactive)
