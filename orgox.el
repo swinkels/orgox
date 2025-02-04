@@ -117,6 +117,7 @@
 
       (insert "#+HUGO_BASE_DIR: ../\n")
       (insert (format "#+HUGO_SECTION: %s\n\n" (orgox--as-date-sections date-elements)))
+      (beginning-of-buffer)
 
       ;; let the first headline provide the title
       (org-next-visible-heading 1)

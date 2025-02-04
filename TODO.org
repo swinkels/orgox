@@ -4,6 +4,14 @@
 Currently orgox hardcodes the top-level section to "posts".
 
 - [ ] support use of images
+- [ ] local links to other notes are extracted as-is
+
+* [2025-02-04 Tue]
+
+- [X] post 20231217.org places property drawer at the wrong headline
+
+* [2025-01-25 Sat]
+
 - [ ] support links to additional files
 
 * [2025-01-24 Fri]

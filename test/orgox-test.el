@@ -49,6 +49,19 @@
            (should (string= (f-read expected-ox-hugo-note-file)
                             (f-read ox-hugo-note-file)))))))))
 
+(ert-deftest test-orgox--export-to-note-file-for-heading-at-first-line()
+  (let ((note-file (get-test-file "20250204.org"))
+        (expected-ox-hugo-note-file (get-test-file "20250204.ox-hugo.org")))
+    (with-current-buffer (find-file-noselect note-file)
+      (with-temp-hugo-site
+       (progn
+         (orgox--export-to-note-file)
+         (let ((ox-hugo-note-file (get-ox-hugo-site-file
+                                   "content-org/20250204.ox-hugo.org")))
+           (should (file-readable-p ox-hugo-note-file))
+           (should (string= (f-read expected-ox-hugo-note-file)
+                            (f-read ox-hugo-note-file)))))))))
+
 ;;;; Tests for orgox--sync-note-dir
 
 (ert-deftest test-orgox--sync-note-dir()
