@@ -1,0 +1,10 @@
+#+HUGO_BASE_DIR: ../
+#+HUGO_SECTION: posts/2025/02/04
+
+* 1st heading
+:PROPERTIES:
+:EXPORT_FILE_NAME: 1st-heading
+:EXPORT_DATE: 2025-02-04
+:END:
+
+** 1st subheading

@@ -1,0 +1,15 @@
+This note is used to test how orgox replaces a reference to an existing note, so
+an existing file whose filename matches "YYYYMMDD.org". It replaces such a link
+with a link in the Hugo site. For example, it replaces
+
+    file:../../20250125.org
+
+with
+
+    file:/posts/2025/01/25/1st-heading.md
+
+(but only if the original link points to an existing file)
+
+* 1st heading
+
+** 1st subheading

@@ -92,6 +92,31 @@
       (orgox--update-local-links "20250125.org")
       (should (string= (f-read expected-ox-hugo-org-file) (buffer-string))))))
 
+(ert-deftest test-orgox--convert-file-reference-for-non-note-file()
+  ;; The next check shows that a relative link to a file in the note directory
+  ;; becomes an absolute link to a static file of the site. Other parts of orgox
+  ;; copy these files so they end up as static files in the site.
+  (should
+   (string= (orgox--convert-file-reference "20250119/hello.txt" (get-test-file "."))
+            "/20250119/hello.txt"))
+
+  ;; The next check shows that a link to a non-note file is handled similarly.
+  ;; As orgox does nothing with these files, the link will be broken in the
+  ;; site.
+  (should
+   (string= (orgox--convert-file-reference "orgox-test.el" (get-test-file "."))
+            "/orgox-test.el")))
+
+(ert-deftest test-orgox--convert-file-reference-for-existing-note-file()
+  (should
+   (string= (orgox--convert-file-reference "20250207.org" (get-test-file "."))
+            "/posts/2025/02/07/1st-heading.md")))
+
+(ert-deftest test-orgox--convert-file-reference-for-existing-note-file-without-heading()
+  (should
+   (string= (orgox--convert-file-reference "20250208.org" (get-test-file "."))
+            "/posts/2025/02/08/no-title.md")))
+
 ;;;; Support
 
 (defun get-test-file (relative-file)

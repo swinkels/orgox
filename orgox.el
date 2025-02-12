@@ -113,13 +113,13 @@
     (with-current-buffer (find-file-noselect ox-hugo-file)
       (erase-buffer)
       (insert-buffer note-buffer)
-      (beginning-of-buffer)
 
+      (beginning-of-buffer)
       (insert "#+HUGO_BASE_DIR: ../\n")
       (insert (format "#+HUGO_SECTION: %s\n\n" (orgox--as-date-sections date-elements)))
-      (beginning-of-buffer)
 
       ;; let the first headline provide the title
+      (beginning-of-buffer)
       (org-next-visible-heading 1)
       (org-set-property "EXPORT_FILE_NAME" (orgox--slug-for-current-heading))
       (org-set-property "EXPORT_DATE" (orgox--as-date date-elements))
@@ -163,9 +163,24 @@
     (while (re-search-forward (format "file:%s" note-name) nil t)
       (replace-match (format "file:/%s" note-name)))))
 
+(defun orgox--convert-file-reference (reference-file abs-note-dir)
+  (let* ((abs-reference-file (f-join abs-note-dir reference-file))
+         (date-elements (orgox--extract-date-elements (f-filename abs-reference-file))))
+    (if date-elements
+        (let* ((slug (orgox--extract-slug abs-reference-file))
+               (site-filename (if slug slug "no-title")))
+          (format "/%s/%s.md" (orgox--as-date-sections date-elements) site-filename))
+      (f-join "/" reference-file))))
+
+(defun orgox--extract-slug (note-file)
+  (with-current-buffer (find-file-noselect note-file)
+    (org-next-visible-heading 1)
+    (orgox--slug-for-current-heading)))
+
 (defun orgox--slug-for-current-heading ()
-  (let ((heading (nth 4 (org-heading-components))))
-    (string-replace " " "-" (downcase heading))))
+  (when (looking-at org-complex-heading-regexp)
+    (let ((heading (nth 4 (org-heading-components))))
+      (string-replace " " "-" (downcase heading)))))
 
 ;;;; Implementation orgox--sync-note-dir
 
