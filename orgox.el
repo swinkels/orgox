@@ -43,6 +43,16 @@
   "Directory of ox-hugo site."
   :type 'directory :group 'orgox)
 
+(defcustom orgox-base-url-for-note-asset nil
+  "URL to use for .org note assets that should not be converted.
+
+ox-hugo converts each link to an org-mode file as if it were a
+note file that is included in the static site. For a link to an
+org-mode file that is not a note but a note asset, this results
+in a broken link. To avoid that, orgox replaces a link to an
+org-mode asset to an URL to the asset in the online note repo."
+  :type 'string :group 'orgox)
+
 (defun orgox-publish-current-buffer ()
   (interactive)
   (let ((ox-hugo-file (orgox--export-to-note-file)))
@@ -130,7 +140,7 @@
       (org-set-property "EXPORT_FILE_NAME" (orgox--as-hugo-filename date-elements))
       (org-set-property "EXPORT_DATE" (orgox--as-date date-elements))
 
-      (orgox--update-local-links note-buffer-name)
+      (orgox--update-local-links)
 
       (save-buffer))))
 
@@ -170,19 +180,71 @@
           (nth 1 date-elements)
           (nth 2 date-elements)))
 
-(defun orgox--update-local-links (note-buffer-name)
-  (let ((note-name (f-no-ext note-buffer-name)))
-    (while (re-search-forward (format "file:%s" note-name) nil t)
-      (replace-match (format "file:/%s" note-name)))))
+(defun orgox--update-local-links ()
+  "Update links to other notes and note files.
 
-(defun orgox--convert-file-reference (reference-file abs-note-dir)
-  (let* ((abs-reference-file (f-join abs-note-dir reference-file))
-         (date-elements (orgox--extract-date-elements (f-filename abs-reference-file))))
-    (if date-elements
-        (let* ((slug (orgox--extract-slug abs-reference-file))
-               (site-filename (if slug slug "no-title")))
-          (format "/%s/%s.md" (orgox--as-date-sections date-elements) site-filename))
-      (f-join "/" reference-file))))
+ox-hugo automatically converts links to other files. This works
+nicely for other notes, but not for links to note directories and
+their contents. This function updates these links in the current
+buffer so they work in the exported side.
+
+This funcion finds each link that is formatted like
+
+   [[<link target>]
+
+and replace the link target by one that is suitable for export.
+The replacement can be equal to the original link target if
+ox-hugo supports the latter out-of-the-box. For details, see
+function `orgox-convert-link'.
+
+The current function works and modifies the current buffer. It
+preserves the location of point."
+  (save-excursion
+    (beginning-of-buffer)
+    (while (re-search-forward "\\[\\[\\([^]]*\\)]" nil t)
+      (let* ((link (match-string 1))
+             (new-link (save-match-data (orgox--convert-link link))))
+        (replace-match new-link t t nil 1)))))
+
+(defun orgox--convert-link (link)
+  "Return a version of the given link that is suitable for export."
+  (if (string-match "^\\(file:\\)?\\(../\\)?\\(20[[:digit:]]\\{6\\}\\)$" link)
+      (let* ((name (match-string 3 link))
+             (date-elements (orgox--extract-date-elements name)))
+        (format "%s/%s/%s/%s"
+                orgox-base-url-for-note-asset
+                (nth 0 date-elements)
+                (nth 1 date-elements)
+                name))
+    (if (string-match "^\\(file:\\)?\\(../[[:digit:]]\\{2\\}/\\)?\\(20[[:digit:]]\\{6\\}\\)$" link)
+        (let* ((name (match-string 3 link))
+               (date-elements (orgox--extract-date-elements name)))
+          (format "%s/%s/%s/%s"
+                  orgox-base-url-for-note-asset
+                  (nth 0 date-elements)
+                  (nth 1 date-elements)
+                  name))
+      (if (string-match "^\\(file:\\)?\\(../../[[:digit:]]\\{4\\}/[[:digit:]]\\{2\\}/\\)?\\(20[[:digit:]]\\{6\\}\\)$" link)
+          (let* ((name (match-string 3 link))
+                 (date-elements (orgox--extract-date-elements name)))
+            (format "%s/%s/%s/%s"
+                    orgox-base-url-for-note-asset
+                    (nth 0 date-elements)
+                    (nth 1 date-elements)
+                    name))
+        (if (string-match "^\\(file:\\)?\\(../\\)?\\(20[[:digit:]]\\{6\\}\\)/\\(.*\\)$" link)
+            (let* ((note-dir-name (match-string 3 link))
+                   (note-dir-file (match-string 4 link))
+                   (date-elements (orgox--extract-date-elements note-dir-name)))
+              (if (string= (f-ext link) "org")
+                  (format "%s/%s/%s/%s/%s"
+                          orgox-base-url-for-note-asset
+                          (nth 0 date-elements)
+                          (nth 1 date-elements)
+                          note-dir-name
+                          note-dir-file)
+                (format "/%s/%s" note-dir-name note-dir-file)))
+          link)))))
 
 (defun orgox--extract-slug (note-file)
   (with-current-buffer (find-file-noselect note-file)

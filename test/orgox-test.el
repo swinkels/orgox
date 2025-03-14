@@ -89,33 +89,56 @@
   (let ((note-file (get-test-file "20250125.org"))
         (expected-ox-hugo-org-file (get-test-file "20250125.ox-hugo.org")))
     (with-current-buffer (find-file-noselect note-file)
-      (orgox--update-local-links "20250125.org")
+      (orgox--update-local-links)
       (should (string= (f-read expected-ox-hugo-org-file) (buffer-string))))))
 
-(ert-deftest test-orgox--convert-file-reference-for-non-note-file()
-  ;; The next check shows that a relative link to a file in the note directory
-  ;; becomes an absolute link to a static file of the site. Other parts of orgox
-  ;; copy these files so they end up as static files in the site.
-  (should
-   (string= (orgox--convert-file-reference "20250119/hello.txt" (get-test-file "."))
-            "/20250119/hello.txt"))
 
-  ;; The next check shows that a link to a non-note file is handled similarly.
-  ;; As orgox does nothing with these files, the link will be broken in the
-  ;; site.
-  (should
-   (string= (orgox--convert-file-reference "orgox-test.el" (get-test-file "."))
-            "/orgox-test.el")))
+(ert-deftest test-orgox--convert-link-to-note-dir()
+  (let ((orgox-base-url-for-note-asset "https://path/to/notes"))
+    ;; to a note dir for the same date (or another date in the same month)
+    (should
+     (string= (orgox--convert-link "20250225") "https://path/to/notes/2025/02/20250225"))
 
-(ert-deftest test-orgox--convert-file-reference-for-existing-note-file()
-  (should
-   (string= (orgox--convert-file-reference "20250207.org" (get-test-file "."))
-            "/posts/2025/02/07/1st-heading.md")))
+    (should
+     (string= (orgox--convert-link "file:20250225") "https://path/to/notes/2025/02/20250225"))
 
-(ert-deftest test-orgox--convert-file-reference-for-existing-note-file-without-heading()
+    (should
+     (string= (orgox--convert-link "../20250226") "https://path/to/notes/2025/02/20250226"))
+
+    ;; to a note dir for the same year, but another month
+    (should
+     (string= (orgox--convert-link "../03/20250301") "https://path/to/notes/2025/03/20250301"))
+
+    ;; to a note dir for another year, but another month
+    (should
+     (string= (orgox--convert-link "../../2024/07/20240724") "https://path/to/notes/2024/07/20240724"))))
+
+(ert-deftest test-orgox--convert-link-to-a-non-org-file-in-note-dir()
+  (let ((orgox-base-url-for-note-asset "https://path/to/notes"))
+    ;; to a file in the note dir for the same date (or another date in the same month)
+    (should
+     (string= (orgox--convert-link "20250225/init.el") "/20250225/init.el"))))
+
+(ert-deftest test-orgox--convert-link-to-an-org-file-in-note-dir()
+  (let ((orgox-base-url-for-note-asset "https://path/to/notes"))
+    ;; to an .org file in the note dir for the same date (or another date in the same month)
+    (should
+     (string= (orgox--convert-link "20250225/TODOs.org") "https://path/to/notes/2025/02/20250225/TODOs.org"))))
+
+(ert-deftest test-orgox--convert-link-to-note-file()
+  ;; to a note file for the same year and month
   (should
-   (string= (orgox--convert-file-reference "20250208.org" (get-test-file "."))
-            "/posts/2025/02/08/no-title.md")))
+   (string= (orgox--convert-link "20250225.org") "20250225.org"))
+
+  (should
+   (string= (orgox--convert-link "../20250225.org") "../20250225.org"))
+
+  ;; to a note file for the same year and a different month
+  (should
+   (string= (orgox--convert-link "../02/20250225.org") "../02/20250225.org"))
+
+  (should
+   (string= (orgox--convert-link "file:20250225.org") "file:20250225.org")))
 
 ;;;; Support
 
