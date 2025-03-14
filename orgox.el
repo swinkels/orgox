@@ -116,12 +116,18 @@
 
       (beginning-of-buffer)
       (insert "#+HUGO_BASE_DIR: ../\n")
-      (insert (format "#+HUGO_SECTION: %s\n\n" (orgox--as-date-sections date-elements)))
+      (insert (format "#+HUGO_SECTION: %s\n" (orgox--as-date-sections date-elements)))
+      (insert (format "#+HUGO_SLUG: %s\n\n"
+                      (save-excursion
+                        ;; let the first headline provide the title
+                        (beginning-of-buffer)
+                        (org-next-visible-heading 1)
+                        (orgox--slug-for-current-heading))))
 
       ;; let the first headline provide the title
       (beginning-of-buffer)
       (org-next-visible-heading 1)
-      (org-set-property "EXPORT_FILE_NAME" (orgox--slug-for-current-heading))
+      (org-set-property "EXPORT_FILE_NAME" (orgox--as-hugo-filename date-elements))
       (org-set-property "EXPORT_DATE" (orgox--as-date date-elements))
 
       (orgox--update-local-links note-buffer-name)
@@ -154,6 +160,12 @@
 
 (defun orgox--as-date (date-elements)
   (format "%s-%s-%s"
+          (nth 0 date-elements)
+          (nth 1 date-elements)
+          (nth 2 date-elements)))
+
+(defun orgox--as-hugo-filename (date-elements)
+  (format "%s%s%s.md"
           (nth 0 date-elements)
           (nth 1 date-elements)
           (nth 2 date-elements)))
