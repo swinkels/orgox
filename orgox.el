@@ -270,8 +270,7 @@ preserves the location of point."
   (call-process "rsync" nil "orgox-process" nil "-Cavz" src-dir dest-dir))
 
 (defun orgox--get-ox-hugo-static-externals-dir ()
-  (let ((static-subdir-name org-hugo-default-static-subdirectory-for-externals))
-    (f-join orgox-hugo-site-directory "static" static-subdir-name)))
+  (f-join orgox-hugo-site-directory "static"))
 
 ;;;; Shared
 

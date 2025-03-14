@@ -71,7 +71,7 @@
        (progn
          (orgox--sync-note-dir)
          (should (f-exists-p
-                  (get-ox-hugo-site-file "static/ox-hugo/20250119/hello.txt"))))))))
+                  (get-ox-hugo-site-file "static/20250119/hello.txt"))))))))
 
 (ert-deftest test-orgox--sync-note-dir-that-does-not-exist()
   (let ((note-file (get-test-file "20250124.org")))
