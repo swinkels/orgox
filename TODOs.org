@@ -1,4 +1,5 @@
 - [ ] configure Eask to install pinned version
+- [ ] add ~README.org~
 - [ ] use ~org-hugo-default-section-directory~ to retrieve top-level section
 
 Currently orgox hardcodes the top-level section to "posts".
@@ -7,8 +8,9 @@ Currently orgox hardcodes the top-level section to "posts".
 
 * [2025-03-15 Sat]
 
-I pushed the repo to GitHub to [[https://github.com/swinkels/notes-as-hugo-blog][notes-as-hugo-blog]] and published the Hugo site to
-GitHub pages :). You can visit it at
+I created a repo to store the Hugo site and pushed it to GitHub, to
+[[https://github.com/swinkels/notes-as-hugo-blog][notes-as-hugo-blog]]. I configured a GitHub workflow to publish an up-to-date
+version to GitHub pages on each commit[fn:3]. You can visit it at
 
     https://swinkels.github.io/notes-as-hugo-blog
 
@@ -131,9 +133,13 @@ the directory in my GitHub repo:
 
 https://github.com/swinkels/notes/tree/main/2024/07/24/20240724
 
+* Footnotes
+
 [fn:1] The local files that org-hugo exports need to have an extension that is
 specified by ~org-hugo-external-file-extensions-allowed-for-copying~, see the
 ox-hugo documentation on [[https://ox-hugo.scripter.co/doc/image-links/][image links]] for details.
 
 [fn:2] Here the name of the ~static~ subfolder is ~org-hugo~. The actual name is
 configured through ~org-hugo-default-static-subdirectory-for-externals~.
+
+[fn:3] I just followed the Hugo documentation [[https://gohugo.io/host-and-deploy/host-on-github-pages/][here]].
