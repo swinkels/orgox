@@ -3,8 +3,29 @@
 
 Currently orgox hardcodes the top-level section to "posts".
 
-- [ ] support use of images
-- [ ] local links to other notes are extracted as-is
+- [ ] fix links to note assets
+
+* [2025-03-15 Sat]
+
+I pushed the repo to GitHub to [[https://github.com/swinkels/notes-as-hugo-blog][notes-as-hugo-blog]] and published the Hugo site to
+GitHub pages :). You can visit it at
+
+    https://swinkels.github.io/notes-as-hugo-blog
+
+I noticed that the links to the note assets are broken. This is because these
+links assume that the assets are at
+
+    https://swinkels.github.io/
+
+so without the repository name. I can either add support in orgox for such a
+top-level directory or use my custom domain, blog.journeythatcounts.nl. I have a
+slight preference for the latter as it would allow me to retire the VPS that
+currently hosts blog.journeythatcounts.nl.
+
+* [2025-03-14 Fri]
+
+- [X] support use of images
+- [X] local links to other notes are extracted as-is
 
 * [2025-02-04 Tue]
 
@@ -92,7 +113,7 @@ org-hugo exports them as
 #+end_example
 In Markdown, these are just text, not links.
 
-Furthermore, links to local files do not work for links to org-more files. For
+Furthermore, links to local files do not work for links to org-mode files. For
 example, org-hugo exports
 #+begin_example
 [[/20240724/hello.org][20240724/hello.org]]
