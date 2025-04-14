@@ -4,7 +4,45 @@
 
 Currently orgox hardcodes the top-level section to "posts".
 
-- [ ] fix links to note assets
+* [2025-03-17 Mon]
+
+In GitHub, I configured a custom domain instead of
+
+    https://swinkels.github.io/notes-as-hugo-blog
+
+This involved 2 things:
+
+- In the management console of my domain provider I added a CNAME record from
+  blog.journeythatcounts.nl to swinkels.github.io. note the ~.~ at the end of
+  swinkels.github.io. Without it, it redirected to something like
+
+      blog.journeythatcounts.nlswinkels.github.io
+
+- With the right CNAME record, the blog was accessible at
+  http://blog.journeythatcounts.nl. However, the DNS check at
+
+      https://github.com/swinkels/notes-as-hugo-blog/settings/pages
+
+  kept failing, with different error messages. For example, sometimes it says
+  that I should configure the custom domain as a CNAME record. Other times it
+  says that the DNS record could not be retrieved. This could be due to DNS
+  caching, especially since the first CNAME record I added was incorrect. After
+  about an hour, the DNS check passsed.
+
+- When the DNS check were still failing, at some point the page at GitHub pages
+  showed that is was generating a TLS certificate and somewhat later, it said
+  that the "Certificate already exists for blog.journeythatcounts.nl and is
+  usable". I checked the "Enforce HTTPS" check box and indeed, the site is
+  available through HTTPS.
+
+- Although the GitHub docs on [[https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site#configuring-a-subdomain][configuring a subdomain]] state that you need a
+  CNAME file in my repo, its [[https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/troubleshooting-custom-domains-and-github-pages][troubleshooting page]] states that it isn't necessary
+  when you're publishing from a custom GitHub Actions workflow, which I am. I
+  had added a CNAME file to the repo, but I removed it after I read this.
+
+This also fixed the next issue:
+
+- [X] fix links to note assets
 
 * [2025-03-15 Sat]
 
