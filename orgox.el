@@ -25,15 +25,37 @@
 ;; along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
-;;
-;; Convert org-mode file to one suited for ox-hugo
-;;
+
+;; This package provides functions to convert the org-mode files that the author
+;; uses to write their notes, to files that are suitable for publishing with
+;; ox-hugo.
 
 ;;; Code:
 
 (provide 'orgox)
 
-;;;; Public definitions
+;; The code in this package uses the following terminology.
+;;
+;; A "note" is an org-mode file that adheres to the certain conventions. First,
+;; its filename should specify the date of the note as YYYYMMDD.org. Second, its
+;; top-level headline should specify the title of the note. All other headlines
+;; in the note should be one or more levels below the top-level headline. Third,
+;; a note can refer to local files. These local files are either other notes or
+;; files that are only relevant for the content of the note itself. The latter
+;; are called "note assets", for example images and code snippets. Note assets
+;; should be placed in a subdirectory with the same name (date) as the note
+;; filename (excluding its extension ".org"), next to the note.
+;;
+;; An "ox-hugo file" is an org-mode file that contains the content of a note but
+;; suitable for publishing with ox-hugo. orgox functions extract information
+;; from the note and its filename and stores it as org-mode properties that
+;; ox-hugo recognizes. ox-hugo files have the extension "ox-hugo.org".
+;;
+;; A variable whose name ends with "-file" is an absolute or relative path to a
+;; file, with "-dir" an absolute or relative path to a directory, with
+;; "-filename" a filename and with "-dirname" a directory name.
+
+;;;; Public API
 
 (defcustom orgox nil
   "Convert org-mode file to one suitable for publishing by ox-hugo."
@@ -44,13 +66,13 @@
   :type 'directory :group 'orgox)
 
 (defcustom orgox-base-url-for-note-asset nil
-  "URL to use for .org note assets that should not be converted.
+  "URL to use for org-mode note assets that should not be converted.
 
-ox-hugo converts each link to an org-mode file as if it were a
-note file that is included in the static site. For a link to an
-org-mode file that is not a note but a note asset, this results
-in a broken link. To avoid that, orgox replaces a link to an
-org-mode asset to an URL to the asset in the online note repo."
+ox-hugo converts each link to an org-mode file as if that
+org-mode file is another note to publish. This results in a
+broken link if the org-mode file is a note asset instead of a
+note. To avoid that, orgox replaces a link to such an org-mode
+note asset with the URL to the asset in the online note repo."
   :type 'string :group 'orgox)
 
 (defun orgox-publish-current-buffer ()
@@ -60,6 +82,7 @@ org-mode asset to an URL to the asset in the online note repo."
       (org-hugo-export-wim-to-md :all-subtrees))))
 
 (defun orgox-export-note-current-buffer ()
+  "Export the current buffer to an ox-hugo file."
   (interactive)
   (orgox-export-note-buffer (current-buffer)))
 
@@ -68,6 +91,11 @@ org-mode asset to an URL to the asset in the online note repo."
   (orgox-export-note-buffer (find-file-noselect note-file)))
 
 (defun orgox-export-note-buffer (note-buffer)
+  "Export the given note buffer to an ox-hugo file.
+This function validates that all variables required for the
+export are set and that the values configured are usable. If that
+validation fails, this function raises an error. This function is
+really suited to do the grunt-work for other public functions."
   (interactive)
 
   (unless orgox-hugo-site-directory
