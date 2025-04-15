@@ -19,69 +19,65 @@
   (dolist (unsuitable-buffer-name (list "abcdefgh.org" "*Messages*"))
     (should-not (orgox--extract-date-elements unsuitable-buffer-name))))
 
-(ert-deftest test-orgox-export-note-buffer-for-undefined-hugo-site-directory()
+(ert-deftest test-orgox--export-note-buffer-for-undefined-hugo-site-directory()
   (with-temp-buffer
     (let ((orgox-hugo-site-directory nil))
-      (let* ((err (should-error (orgox-export-note-buffer (current-buffer))))
+      (let* ((err (should-error (orgox--export-note-buffer (current-buffer))))
              (err-message (error-message-string err)))
         (should (string= "Hugo site directory is not configured" err-message))))))
 
 (ert-deftest test-orgox--export-note-buffer-for-missing-hugo-site-directory()
   (with-temp-buffer
     (let ((orgox-hugo-site-directory "/tmp/512e31e3"))
-      (let* ((err (should-error (orgox-export-note-buffer (current-buffer))))
+      (let* ((err (should-error (orgox--export-note-buffer (current-buffer))))
              (err-message (error-message-string err)))
         (should
          (string= "Hugo site directory /tmp/512e31e3 does not exist" err-message))))))
 
-;;;; Tests for orgox--export-to-note-file
+;;;; Tests for orgox--export-to-ox-hugo-file
 
-(ert-deftest test-orgox--export-to-note-file()
+(ert-deftest test-orgox--export-to-ox-hugo-file()
   (let ((note-file (get-test-file "20250119.org"))
         (expected-ox-hugo-note-file (get-test-file "20250119.ox-hugo.org")))
-    (with-current-buffer (find-file-noselect note-file)
-      (with-temp-hugo-site
-       (progn
-         (orgox--export-to-note-file)
-         (let ((ox-hugo-note-file (get-ox-hugo-site-file
-                                   "content-org/20250119.ox-hugo.org")))
-           (should (file-readable-p ox-hugo-note-file))
-           (should (string= (f-read expected-ox-hugo-note-file)
-                            (f-read ox-hugo-note-file)))))))))
+    (with-temp-hugo-site
+     (progn
+       (orgox--export-to-ox-hugo-file (find-file-noselect note-file))
+       (let ((ox-hugo-note-file (get-ox-hugo-site-file
+                                 "content-org/20250119.ox-hugo.org")))
+         (should (file-readable-p ox-hugo-note-file))
+         (should (string= (f-read expected-ox-hugo-note-file)
+                          (f-read ox-hugo-note-file))))))))
 
-(ert-deftest test-orgox--export-to-note-file-for-heading-at-first-line()
+(ert-deftest test-orgox--export-to-ox-hugo-file-for-heading-at-first-line()
   (let ((note-file (get-test-file "20250204.org"))
         (expected-ox-hugo-note-file (get-test-file "20250204.ox-hugo.org")))
-    (with-current-buffer (find-file-noselect note-file)
-      (with-temp-hugo-site
-       (progn
-         (orgox--export-to-note-file)
-         (let ((ox-hugo-note-file (get-ox-hugo-site-file
-                                   "content-org/20250204.ox-hugo.org")))
-           (should (file-readable-p ox-hugo-note-file))
-           (should (string= (f-read expected-ox-hugo-note-file)
-                            (f-read ox-hugo-note-file)))))))))
+    (with-temp-hugo-site
+     (progn
+       (orgox--export-to-ox-hugo-file (find-file-noselect note-file))
+       (let ((ox-hugo-note-file (get-ox-hugo-site-file
+                                 "content-org/20250204.ox-hugo.org")))
+         (should (file-readable-p ox-hugo-note-file))
+         (should (string= (f-read expected-ox-hugo-note-file)
+                          (f-read ox-hugo-note-file))))))))
 
 ;;;; Tests for orgox--sync-note-dir
 
-(ert-deftest test-orgox--sync-note-dir()
+(ert-deftest test-orgox--sync-note-assets()
   (let ((note-file (get-test-file "20250119.org")))
-    (with-current-buffer (find-file-noselect note-file)
-      (with-temp-hugo-site
-       (progn
-         (orgox--sync-note-dir)
-         (should (f-exists-p
-                  (get-ox-hugo-site-file "static/20250119/hello.txt"))))))))
+    (with-temp-hugo-site
+     (progn
+       (orgox--sync-note-assets note-file)
+       (should (f-exists-p
+                (get-ox-hugo-site-file "static/20250119/hello.txt")))))))
 
 (ert-deftest test-orgox--sync-note-dir-that-does-not-exist()
   (let ((note-file (get-test-file "20250124.org")))
-    (with-current-buffer (find-file-noselect note-file)
-      (with-temp-hugo-site
-       (progn
-         (cl-letf (((symbol-function 'one-way-sync-dir)
-                    (lambda () (error "one-way-sync-dir should not been called"))))
-           (orgox--sync-note-dir))
-         (should-not (f-exists-p (get-ox-hugo-site-file "static/ox-hugo/20250124"))))))))
+    (with-temp-hugo-site
+     (progn
+       (cl-letf (((symbol-function 'one-way-sync-dir)
+                  (lambda () (error "one-way-sync-dir should not been called"))))
+         (orgox--sync-note-assets note-file))
+       (should-not (f-exists-p (get-ox-hugo-site-file "static/ox-hugo/20250124")))))))
 
 ;;;; Tests for orgox--update-local-links
 

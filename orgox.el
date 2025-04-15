@@ -51,6 +51,10 @@
 ;; from the note and its filename and stores it as org-mode properties that
 ;; ox-hugo recognizes. ox-hugo files have the extension "ox-hugo.org".
 ;;
+;; To export a note means to create the appropriate ox-hugo file for it. To
+;; publish a note means to create the appropriate ox-hugo file and convert that
+;; file to markdown.
+;;
 ;; A variable whose name ends with "-file" is an absolute or relative path to a
 ;; file, with "-dir" an absolute or relative path to a directory, with
 ;; "-filename" a filename and with "-dirname" a directory name.
@@ -75,28 +79,33 @@ note. To avoid that, orgox replaces a link to such an org-mode
 note asset with the URL to the asset in the online note repo."
   :type 'string :group 'orgox)
 
-(defun orgox-publish-current-buffer ()
+(defun orgox-export-current-buffer ()
+  "Export the current buffer, which should hold a note."
   (interactive)
-  (let ((ox-hugo-file (orgox--export-to-note-file)))
+  (orgox--export-note-buffer (current-buffer)))
+
+(defun orgox-publish-current-buffer ()
+  "Publish the current buffer, which should hold a note."
+  (interactive)
+  (let ((ox-hugo-file (orgox--export-to-ox-hugo-file)))
     (with-current-buffer (find-file-noselect ox-hugo-file)
       (org-hugo-export-wim-to-md :all-subtrees))))
 
-(defun orgox-export-note-current-buffer ()
-  "Export the current buffer to an ox-hugo file."
-  (interactive)
-  (orgox-export-note-buffer (current-buffer)))
-
 (defun orgox-export-note-file (note-file)
-  (interactive)
-  (orgox-export-note-buffer (find-file-noselect note-file)))
+  "Export the given file, which should refer to a note."
+  (orgox--export-note-buffer (find-file-noselect note-file)))
 
-(defun orgox-export-note-buffer (note-buffer)
+;;;; Implementation
+
+(defun orgox--export-note-buffer (note-buffer)
   "Export the given note buffer to an ox-hugo file.
-This function validates that all variables required for the
-export are set and that the values configured are usable. If that
-validation fails, this function raises an error. This function is
-really suited to do the grunt-work for other public functions."
-  (interactive)
+Before this function exports the note buffer, it validates
+several prerequisites of the export. For example, it checks that
+the variables required for an export are configured correctly.
+Should that validation fail, this function raises an error.
+
+This function is really suited to do the grunt-work for other
+public functions."
 
   (unless orgox-hugo-site-directory
     (error "Hugo site directory is not configured"))
@@ -123,28 +132,21 @@ really suited to do the grunt-work for other public functions."
           "Hugo subdirectory for static externals %s should be a writable directory"
           static-externals-dir)))))
 
-  (let ((note-buffer-name (buffer-name note-buffer)))
-    (unless (orgox--extract-date-elements note-buffer-name)
-      (error (format "Unable to extract date elements from \"%s\"" note-buffer-name))))
+  (let* ((note-buffer-name (buffer-name note-buffer))
+         (date-elements (orgox--extract-date-elements note-buffer-name)))
 
-  ;; create the directories to hold the org-mode content and the static files
-  (f-mkdir-full-path (orgox--get-ox-hugo-content-dir))
-  (f-mkdir-full-path (orgox--get-ox-hugo-static-externals-dir))
+    (unless date-elements
+      (error (format "Unable to extract date elements from \"%s\"" note-buffer-name)))
 
-  (orgox--export-note-buffer note-buffer))
+    ;; create the directories to hold the org-mode content and the static files
+    (f-mkdir-full-path (orgox--get-ox-hugo-content-dir))
+    (f-mkdir-full-path (orgox--get-ox-hugo-static-externals-dir))
 
-;;;; Implementation orgox--export-note-buffer
+    (orgox--export-to-ox-hugo-file note-buffer)
+    (orgox--sync-note-assets (buffer-file-name note-buffer))))
 
-(defun orgox--export-note-buffer (note-buffer)
-  (with-current-buffer note-buffer
-    (orgox--export-to-note-file)
-    (orgox--sync-note-dir)))
-
-;;;; Implementation orgox--export-to-note-file
-
-(defun orgox--export-to-note-file ()
-  (let* ((note-buffer (current-buffer))
-         (note-buffer-name (buffer-name note-buffer))
+(defun orgox--export-to-ox-hugo-file (note-buffer)
+  (let* ((note-buffer-name (buffer-name note-buffer))
          (date-elements (orgox--extract-date-elements note-buffer-name))
          (ox-hugo-file-name (orgox--get-ox-hugo-file-name note-buffer-name))
          (ox-hugo-file (f-join (orgox--get-ox-hugo-content-dir) ox-hugo-file-name)))
@@ -284,11 +286,12 @@ preserves the location of point."
     (let ((heading (nth 4 (org-heading-components))))
       (string-replace " " "-" (downcase heading)))))
 
-;;;; Implementation orgox--sync-note-dir
-
-(defun orgox--sync-note-dir ()
-  (let* ((note-dir-name (f-no-ext (buffer-file-name)))
-         (note-dir (f-join (f-dirname (buffer-file-name)) note-dir-name)))
+(defun orgox--sync-note-assets (note-file)
+  """Sync the assets of the given note.
+This function syncs the note assets directory to the directory
+that holds the static files of the site. If the given note does
+not have an asset directory, this function does nothing."
+  (let ((note-dir (f-no-ext note-file)))
     (when (f-directory-p note-dir)
       (orgox--one-way-sync note-dir (orgox--get-ox-hugo-static-externals-dir)))))
 
@@ -299,8 +302,6 @@ preserves the location of point."
 
 (defun orgox--get-ox-hugo-static-externals-dir ()
   (f-join orgox-hugo-site-directory "static"))
-
-;;;; Shared
 
 (defun orgox--get-ox-hugo-content-dir ()
   (f-join orgox-hugo-site-directory "content-org"))
