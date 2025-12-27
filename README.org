@@ -1,0 +1,266 @@
+Welcome to Orgox, an Emacs Lisp package to help you create a static website from
+a set of plain Org files. In a nutshell, Orgox converts Org files to a format
+that is suitable for [[https://ox-hugo.scripter.co/][ox-hugo]], "an Org exporter backend that exports Org to
+Hugo-compatible Markdown". [[https://themes.gohugo.io/][Hugo]] is a well-known open-source static site
+generator.
+
+The following repositories show an application of Orgox to publish a set of Org
+files as a nicely-looking static website:
+- GitHub repository [[https://github.com/swinkels/notes][swinkels/notes]] contains a directory tree of Org files, with
+  each Org file a note;
+- GitHub repository [[https://github.com/swinkels/notes-as-hugo-blog][swinkels/notes-as-hugo-blog]] contains a Hugo site whose page
+  content is an export of the Org files using Orgox;
+- Blog [[https://blog.journeythatcounts.nl/][The journey that counts]] shows the published site.
+
+Disclaimer: Orgox is specifically built to convert the Org files in
+[[https://github.com/swinkels/notes][swinkels/notes]]. Currently it relies on specific properties these files have.
+
+* Background
+
+I don't really have a blog but I do maintain a repository of notes on GitHub,
+[[https://github.com/swinkels/notes][swinkels/notes]][fn:1]. Each note is an Org file and as GitHub has some support
+for org-mode, the notes are rendered "ok-ish" when you visit the repo with your
+browser. To also have a more "professional" presence in the blogosphere, I
+wanted to publish them as a Hugo static site.
+
+Hugo expects its content to be formatted using Markdown. Org can export Org
+files to Hugo Markdown files via its exporter ox-hugo, but such an export needs
+additional work to be successful. For example, Hugo reads page properties such
+as the page title or the date of publishing from "front matter" at the top the
+Markdown file[fn:2]. ox-hugo can create that preamble if the Org file also
+specifies that information as Org properties. My Org files do not have these
+properties.
+
+I didn't want to change my Org notes to make them suitable for export to Hugo.
+These changes would have made my notes on GitHub even less attractive. I also
+didn't want to convert them manually because it seemed such an easy job to
+automate ;). And so Orgox was born.
+
+* Installation using Spacemacs
+
+I use Spacemacs so I provide the installation instructions for that context. It
+should be relatively straightforward to adapt these instructions for "plain
+Emacs".
+
+Spacemacs will automatically retrieve the package from its GitHub repo if you
+add the following entry to the list of "additional packages" in ~~/.spacemacs~:
+#+begin_src emacs-lisp
+   dotspacemacs-additional-packages
+   `(
+     (orgox :location (recipe :fetcher github :repo "swinkels/orgox" :files ("orgox.el"))
+     )
+#+end_src
+
+At this point the package will be available to Spacemacs but will not yet be
+loaded. The following use-package expression for ~dotspacemacs/user-config~ in
+~.spacemacs/init.el~ takes care of that:
+#+begin_src emacs-lisp
+(use-package orgox
+  :commands (orgox-export-current-buffer)
+  :custom
+  ;; change these values for your use case
+  (orgox-base-url-for-note-asset "https://Git/forge/with/your/repo/tree/main")
+  (orgox-hugo-site-directory "local/directory/with/Hugo/site/"))
+#+end_src
+This expression establishes two things when you call
+~orgox-export-current-buffer~ for the first time:
+- load Orgox;
+- set the variables Orgox depends on, ~orgox-base-url-for-note-asset~ with the
+  URL to the repository files for your notes and ~orgox-hugo-site-directory~
+  that holds the local directory with the Hugo site.
+
+* Usage primer
+
+The process to convert an Org file to a page of a Hugo site involves 3
+tools/steps:
+1. Orgox to convert an Org file to an Org file that ox-hugo understands.
+2. ox-hugo to convert the Org file to a Markdown file that Hugo understands.
+3. Hugo to convert the Markdown file to an HTML page of the static website.
+
+A repository for a Hugo site contains the following top-level directories:
+#+begin_example
+.
+├── archetypes
+├── assets
+├── content
+├── data
+├── i18n
+├── layouts
+├── public
+├── resources
+├── static
+└── themes
+#+end_example
+
+A subset of these directories play a role in this process:
+1. Orgox converts the Org file in the current buffer and stores the resulting
+   file in directory ~content-org/~ of the Hugo repository. This directory is
+   specific for ox-hugo and therefore not shown in the directory
+   structure[fn:3].
+2. ox-hugo converts the Org files in directory ~content-org/~ and stores the
+   resulting Markdown files in directory ~content/~.
+3. Hugo converts the Markdown files in directory ~content/~ to HTML and stores
+   the generated static site in directory ~public/~, together with the assets of
+   directory ~static/~.
+
+* Orgox workflow
+
+As mentioned, Orgox is specifically built to convert the Org files in repo
+swinkels/notes and relies on specific properties that these files have. This
+section describes what that means for Orgox.
+
+** Org file names and content
+
+The next directory tree view illustrates how each note in repository
+[[https://github.com/swinkels/notes][swinkels/notes]] maps to an Org file in the file system:
+#+begin_src text
+2024
+├── 01
+│   └── 20240103.org
+├── 03
+│   ├── 20240324
+│   │   └── you-do-not-simply-upgrade-spacemacs.jpg
+│   └── 20240324.org
+├── 07
+│   ├── 20240724
+│   │   └── emacs-29.2.scm
+│   └── 20240724.org
+└── 12
+    ├── 20241224.org
+    ├── 20241228
+    └── 20241228.org
+#+end_src
+
+Each Org file in this directory structure contains one "note". Its Org file is
+named after the date it's written using format YYYYMMDD.
+
+Each note starts with an Org headline item that contains the title of that note.
+The following snippet shows the first line from ~20240324.org~:
+#+begin_src text
+,* Upgrading Spacemacs                                                 :emacs:
+#+end_src
+
+As you see, the headline item can be tagged.
+
+Some notes link to additional files, such as an image that needs to be embedded.
+These files are stored in a subdirectory next to the Org file named after the
+Org file:
+#+begin_src text
+2024
+└── 03
+    ├── 20240324
+    │   └── you-do-not-simply-upgrade-spacemacs.jpg
+    └── 20240334.org
+#+end_src
+
+This directory is also called the note directory and the files in it are called
+note assets.
+
+** Workflow
+
+When Orgox converts an Org file like ~20250324.org~ it stores the result as
+~20250324.ox-hugo.org~ in subdirectory ~content-org/~ of the configured Hugo
+site directory. To convert the file, Orgox does the following:
+- Inserts the front matter that ox-hugo requires based on the file name of the
+  Org file and its content.
+- Copies the content of the note directory, if any, to subdirectory ~static~ of
+  the Hugo site directory.
+- Replaces relative links to note assets that are Org files and to note
+  directories themselves by absolute links to their online counterparts in
+  repository swinkels/notes.
+- Replaces relative links to other note assets by absolute links.
+
+The following sections describe these steps in detail.
+
+*** ox-hugo front-matter
+
+Hugo reads page properties such as its title or date of publishing from front
+matter at the top of the Markdown file. ox-hugo creates that front matter from
+Org properties in the Org file and also uses other Org properties to configure
+the conversion. When Orgox converts a plain Org file, it inserts these
+properties in the resulting file.
+
+The following examples shows the properties that Orgox adds for Org file
+~20240324.org~ with first headline "Let Git for Windows use Pageant as SSH
+agent":
+
+#+begin_src org
+#+HUGO_BASE_DIR: ../
+#+HUGO_SECTION: posts/2024/03/24
+#+HUGO_SLUG: upgrading-spacemacs
+
+,* Upgrading Spacemacs                                                 :emacs:
+:PROPERTIES:
+:EXPORT_FILE_NAME: 20240324.md
+:EXPORT_DATE: 2024-03-24
+:END:
+#+end_src
+
+Most of the information in these properties is extracted from the filename of
+the Org file and its contents. The only information that Orgox hard-codes are
+the location of the root of the Hugo site, so the value of ~HUGO_BASE_DIR~, and
+the ~posts~ directory in ~HUGO_SECTION~. The latter allows a website page
+~Posts/~ that lists all posts on a yearly basis.
+
+*** Note assets
+
+Orgox makes a note directory like ~20240324/~ available as ~/20240324~ in the
+static site - note the new ~/~ at the start. To make sure that the published
+HTML can refer to these assets, Orgox converts each relative link to a note
+asset to start with a ~/~. For example, Orgox converts a link like
+~20240324/you-do-not-simply-upgrade-spacemacs.jpg~ to
+~/20240324/you-do-not-simply-upgrade-spacemacs.jpg~.
+
+Note that Orgox does not convert a relative link to an Org file that is a note
+asset or one to a note directory. The following section on relative links
+explains why that is.
+
+*** Relative links
+
+Each note can have absolute links, relative links to other notes and relative
+links to note assets and note directories. Ox-hugo supports the first 2
+categories, but it needs some help for the last category.
+
+First, ox-hugo converts every link to an Org file to a "relref" in the static
+website. For example, take ~20240724.org~, which refers to a previous note:
+#+begin_src text
+For [[file:../../../2023/08/20230803.org][a previous note]] I built a Python
+#+end_src
+ox-hugo exports that link as
+#+begin_src text
+[a previous note]({{< relref "20230803" >}})
+#+end_src
+Here the target note is ~20230803.md~, which is correct. However, an Org file in
+a note directory is not a top-level note that should end up as a separate page
+in the static website. So if ox-hugo creates a relref for such an Org file, Hugo
+cannot build the site because the target does not exist.
+
+Second, the Hugo site does not expose a note asset directory so you cannot
+access it from the published website[fn:4]. So if a note links to a note directory,
+it's a 404 in the published site.
+
+To work around these two issues, Orgox converts these links to links to their
+online counterparts in repository swinkels/notes. For example, Orgox converts a
+link to a note directory such as ~20250525~ by
+#+begin_src text
+https://github.com/swinkels/notes/tree/main/2024/03/20250225
+#+end_src
+and a link to an Org file such as ~20250225/TODOs.org~ by
+#+begin_src text
+https://github.com/swinkels/notes/tree/main/2025/02/20250225/TODOs.org
+#+end_src
+
+* Footnotes
+
+[fn:1] Most notes are about things I learned or found out about tools &
+techniques in software development, Emacs, Guix and Linux.
+
+[fn:2] This front matter is a section in TOML or YAML format in the Markdown
+file.
+
+[fn:3]  This can be any directory but the use of ~content-org/~ in the Hugo site
+seems to be a convention.
+
+[fn:4] This might be something you configure in Hugo but I haven't investigated that.
+
+#  LocalWords:  hugo
