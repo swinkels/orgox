@@ -1,8 +1,16 @@
 - [ ] configure Eask to install pinned version
-- [ ] add ~README.org~
 - [ ] use ~org-hugo-default-section-directory~ to retrieve top-level section
 
 Currently orgox hardcodes the top-level section to "posts".
+
+** [2025-12-29 Mon]
+
+I addressed all checkdoc warnings and added the GNU General Public License
+(file).
+
+** [2025-12-28 Sun]
+
+- [X] add ~README.org~
 
 * [2025-03-17 Mon]
 
