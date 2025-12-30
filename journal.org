@@ -1,18 +1,53 @@
-- [ ] configure Eask to install pinned version
-- [ ] use ~org-hugo-default-section-directory~ to retrieve top-level section
+* To work on
 
-Currently orgox hardcodes the top-level section to "posts".
+** TODO [#B] Publish Orgox to MELPA
+** TODO [#C] Use Bump My Version to manage versioning
+** TODO [#C] Use towncrier to build CHANGELOG
+
+
+* Done
+
+** DONE [#B] Autoload functions in public API
+CLOSED: [2025-12-30 Tue 12:15] SCHEDULED: <2025-12-29 Mon>
+:LOGBOOK:
+CLOCK: [2025-12-30 Tue 11:25]--[2025-12-30 Tue 12:15] =>  0:50
+CLOCK: [2025-12-30 Tue 09:51]--[2025-12-30 Tue 11:00] =>  1:09
+CLOCK: [2025-12-29 Mon 11:50]--[2025-12-29 Mon 12:00] =>  0:10
+CLOCK: [2025-12-29 Mon 11:11]--[2025-12-29 Mon 11:32] =>  0:21
+:END:
+
+*** [2025-12-30 Tue]
+
+- [X] test autoloads
+- [X] address missing doc strings
+
+*** [2025-12-29 Mon]
+
+- [ ] address missing doc strings
+- [X] update README.org
+- [X] add autoloads for functions of public API
+
+
+* Initial TODOs
+
+Entries when this file was still called ~TODOs.org~.
 
 ** [2025-12-29 Mon]
 
 I addressed all checkdoc warnings and added the GNU General Public License
 (file).
 
+- [X] use ~org-hugo-default-section-directory~ to retrieve top-level section
+
+Note that ~org-hugo-default-section-directory~ is obsolete since Oct 31, 2018
+and you should use ~org-hugo-section~ instead. It turns out that Orgox already
+uses ~org-hugo-section~, so nothing to be done here.
+
 ** [2025-12-28 Sun]
 
 - [X] add ~README.org~
 
-* [2025-03-17 Mon]
+** [2025-03-17 Mon]
 
 In GitHub, I configured a custom domain instead of
 
@@ -52,7 +87,7 @@ This also fixed the next issue:
 
 - [X] fix links to note assets
 
-* [2025-03-15 Sat]
+** [2025-03-15 Sat]
 
 I created a repo to store the Hugo site and pushed it to GitHub, to
 [[https://github.com/swinkels/notes-as-hugo-blog][notes-as-hugo-blog]]. I configured a GitHub workflow to publish an up-to-date
@@ -70,31 +105,31 @@ top-level directory or use my custom domain, blog.journeythatcounts.nl. I have a
 slight preference for the latter as it would allow me to retire the VPS that
 currently hosts blog.journeythatcounts.nl.
 
-* [2025-03-14 Fri]
+** [2025-03-14 Fri]
 
 - [X] support use of images
 - [X] local links to other notes are extracted as-is
 
-* [2025-02-04 Tue]
+** [2025-02-04 Tue]
 
 - [X] post 20231217.org places property drawer at the wrong headline
 
-* [2025-01-25 Sat]
+** [2025-01-25 Sat]
 
 - [ ] support links to additional files
 
-* [2025-01-24 Fri]
+** [2025-01-24 Fri]
 
 - [ ] support links to additional files
 
 I implemented the functions to sync the directory of local files to the Hugo
 static subdirectory for external files.
 
-* [2025-01-21 Tue]
+** [2025-01-21 Tue]
 
 - [X] use sections to create URLs with ~YYYY/MM/DD/<title>~
 
-* [2025-01-20 Mon]
+** [2025-01-20 Mon]
 
 - [X] add unit tests
 
@@ -102,7 +137,7 @@ I added a single unit test that tests the creation of an ox-hugo post from a
 note. This sets up the required test scaffolding and tests one of the main
 functions. This is enough for now.
 
-* [2025-01-19 Sun]
+** [2025-01-19 Sun]
 
 In general, each of my notes consists of an org file org and, in case a note
 links to a local file, a directory at the same level as the org file with these
@@ -136,7 +171,7 @@ repository[fn:2]. So for a local folder ~20240724~, copy it to
 <Hugo site repository root>/static/ox-hugo/20240724
 #+end_example
 
-** Caveats
+*** Caveats
 
 The first caveat took me quite some time: org-hugo only seems to support named
 links to local files. I started out with a link like this
@@ -179,7 +214,7 @@ the directory in my GitHub repo:
 
 https://github.com/swinkels/notes/tree/main/2024/07/24/20240724
 
-* Footnotes
+** Footnotes
 
 [fn:1] The local files that org-hugo exports need to have an extension that is
 specified by ~org-hugo-external-file-extensions-allowed-for-copying~, see the
@@ -189,3 +224,8 @@ ox-hugo documentation on [[https://ox-hugo.scripter.co/doc/image-links/][image l
 configured through ~org-hugo-default-static-subdirectory-for-externals~.
 
 [fn:3] I just followed the Hugo documentation [[https://gohugo.io/host-and-deploy/host-on-github-pages/][here]].
+
+
+* file-specific org-mode settings
+
+#+TODO: TODO(t) IN_PROGRESS(i) WAITING(w) PAUSED(p) | DONE(d) CANCELLED(c) DELEGATED(e)
