@@ -80,11 +80,13 @@ avoid that, orgox replaces a link with the URL to the note asset or
 directory in the online note repository."
   :type 'string :group 'orgox)
 
+;;;###autoload
 (defun orgox-export-current-buffer ()
   "Export the current buffer, which should hold a note, to an ox-hugo file."
   (interactive)
   (orgox--export-note-buffer (current-buffer)))
 
+;;;###autoload
 (defun orgox-publish-current-buffer ()
   "Publish the current buffer, which should hold a note, to an ox-hugo file."
   (interactive)

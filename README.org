@@ -56,14 +56,19 @@ loaded. The following use-package expression for ~dotspacemacs/user-config~ in
 ~.spacemacs/init.el~ takes care of that:
 #+begin_src emacs-lisp
 (use-package orgox
-  :commands (orgox-export-current-buffer)
+  ;; When you've added `orgox' to `dotspacemacs-additional-packages' as a local
+  ;; package, the Orgox autoloads won't have been loaded. In that case you need
+  ;; to specify them explicitly in a :commands section.
+  :commands
+  (orgox-export-current-buffer orgox-publish-current-buffer)
   :custom
   ;; change these values for your use case
   (orgox-base-url-for-note-asset "https://Git/forge/with/your/repo/tree/main")
   (orgox-hugo-site-directory "local/directory/with/Hugo/site/"))
 #+end_src
 This expression establishes two things when you call
-~orgox-export-current-buffer~ for the first time:
+~orgox-export-current-buffer~ (or ~orgox-publish-current-buffer~) for the first
+time:
 - load Orgox;
 - set the variables Orgox depends on, ~orgox-base-url-for-note-asset~ with the
   URL to the repository files for your notes and ~orgox-hugo-site-directory~
