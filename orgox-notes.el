@@ -28,10 +28,15 @@
 (require 'f)
 (require 'orgox)
 
+;;;; Public API
+
 (defun orgox-notes-export (note-buffer ox-hugo-buffer config)
   (pcase-let (((map :hugo-base-dir :markdown-file-name :notes-url) config))
     (orgox-notes-export-to-ox-hugo-buffer note-buffer ox-hugo-buffer config)
-    (orgox-notes-update-local-links ox-hugo-buffer notes-url)))
+    (orgox-notes-update-local-links ox-hugo-buffer notes-url)
+    (orgox-notes-copy-note-directory-to-static note-buffer hugo-base-dir)))
+
+;;;; Developer API
 
 (defun orgox-notes-export-to-ox-hugo-buffer (note-buffer ox-hugo-buffer config)
   "Export NOTE-BUFFER to OX-HUGO-BUFFER.
@@ -53,18 +58,49 @@ information that OX-HUGO-BUFFER needs to configure for Hugo:
         (goto-char (point-min))
         (insert (format "#+HUGO_BASE_DIR: %s\n" hugo-base-dir))
         (insert (format "#+HUGO_SECTION: %s\n" (orgox-notes-extract-section-string date-elements)))
-        (insert (format "#+HUGO_SLUG: %s\n\n"
-                        (save-excursion
-                          ;; let the first headline provide the title
-                          (goto-char (point-min))
-                          (org-next-visible-heading 1)
-                          (orgox-notes-extract-slug))))
+        (insert (format "#+HUGO_SLUG: %s\n\n" (orgox-notes--extract-slug)))
 
         ;; let the first headline provide the title
         (goto-char (point-min))
         (org-next-visible-heading 1)
         (org-set-property "EXPORT_FILE_NAME" markdown-file-name)
         (org-set-property "EXPORT_DATE" (orgox-notes-extract-date date-elements))))))
+
+(defun orgox-notes-update-local-links (ox-hugo-buffer notes-url)
+  "Update links to other notes and note files.
+Ox-hugo automatically converts links to other files.  This works nicely
+for other notes, but not for links to note directories and note assets.
+This function updates these links in the current buffer so they work in
+the exported side.
+
+This function goes over each string in the current buffer that matches
+[[.*]] and when necessary, replaces the link target, so the text between
+the inner square brackets, by one that is suitable for export by
+ox-hugo.  This can mean that it replaces the target by the URL to its
+counterpart in the online notes repository, hence the need for
+NOTES-URL.
+
+This function works and modifies the current buffer.  It preserves the
+location of point."
+  (with-current-buffer ox-hugo-buffer
+    (save-excursion
+      (goto-char (point-min))
+      (while (re-search-forward "\\[\\[\\([^]]*\\)]" nil t)
+        (let* ((link (match-string 1))
+               (new-link (save-match-data (orgox-notes--convert-link link notes-url))))
+          (replace-match new-link t t nil 1))))))
+
+(defun orgox-notes-copy-note-directory-to-static (note-buffer hugo-base-dir)
+  "Copy the note directory of NOTE-BUFFER to the static directory.
+Hugo makes the content of HUGO-BASE-DIR/static available as static
+files.  In the generated site, each link to a note directory or a
+non-Org note asset links to a directory or file in this folder.
+
+If the given note does not have a note directory, this function does
+nothing."
+  (let ((note-dir (f-no-ext (buffer-file-name note-file))))
+    (when (f-directory-p note-dir)
+      (orgox-notes--one-way-sync note-dir (f-join hugo-base-dir "static")))))
 
 (defun orgox-notes-extract-date-elements (buffer-name)
   "Return the date elements from BUFFER-NAME.
@@ -97,37 +133,19 @@ The string returned has format \"YYYY-MM-DD\"."
           (nth 1 date-elements)
           (nth 2 date-elements)))
 
-(defun orgox-notes-extract-slug ()
-  "Return the slug from the current headline.
+;;;; Private functions
+
+(defun orgox-notes--extract-slug ()
+  "Return the slug from the first headline.
 The slug is created by converting the headline to lowercase and replacing
 spaces with hyphens."
-  (when (looking-at org-complex-heading-regexp)
-    (let ((heading (nth 4 (org-heading-components))))
-      (string-replace " " "-" (downcase heading)))))
-
-(defun orgox-notes-update-local-links (ox-hugo-buffer notes-url)
-  "Update links to other notes and note files.
-Ox-hugo automatically converts links to other files.  This works nicely
-for other notes, but not for links to note directories and note assets.
-This function updates these links in the current buffer so they work in
-the exported side.
-
-This function goes over each string in the current buffer that matches
-[[.*]] and when necessary, replaces the link target, so the text between
-the inner square brackets, by one that is suitable for export by
-ox-hugo.  This can mean that it replaces the target by the URL to its
-counterpart in the online notes repository, hence the need for
-NOTES-URL.
-
-This function works and modifies the current buffer.  It preserves the
-location of point."
-  (with-current-buffer ox-hugo-buffer
-    (save-excursion
-      (goto-char (point-min))
-      (while (re-search-forward "\\[\\[\\([^]]*\\)]" nil t)
-        (let* ((link (match-string 1))
-               (new-link (save-match-data (orgox-notes--convert-link link notes-url))))
-          (replace-match new-link t t nil 1))))))
+  (save-excursion
+    ;; let the first headline provide the title
+    (goto-char (point-min))
+    (org-next-visible-heading 1)
+    (when (looking-at org-complex-heading-regexp)
+      (let ((heading (nth 4 (org-heading-components))))
+        (string-replace " " "-" (downcase heading))))))
 
 (defun orgox-notes--convert-link (link-target notes-url)
   "Return a version of LINK that is suitable for export.
@@ -176,6 +194,12 @@ In all other cases this function returns LINK."
                           note-dir-file)
                 (format "/%s/%s" note-dir-name note-dir-file)))
           link-target)))))
+
+(defun orgox-notes--one-way-sync (src-dir dest-dir)
+  "Sync SRC-DIR to DEST-DIR using rsync.
+Make sure the destination directory exists; rsync will fail otherwise."
+  (f-mkdir-full-path dest-dir)
+  (call-process "rsync" nil "orgox-process" nil "-Cavz" src-dir dest-dir))
 
 (provide 'orgox-notes)
 
