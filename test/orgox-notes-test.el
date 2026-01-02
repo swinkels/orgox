@@ -7,22 +7,18 @@
 
 ;; tests for orgox-notes-export-to-ox-hugo-buffer
 
-(ert-deftest orgox-notes-end-to-end ()
-  ;; This end-to-end test shows that the ox-hugo buffer that
-  ;; `orgox-notes-export-to-ox-hugo-buffer' populates has the same text as the
-  ;; note buffer but also (1) includes the front matter for the Hugo site and
-  ;; the Org properties for the headline of the note, and (2) as an example,
-  ;; updates a link to a note asset that is not an Org file.
+(ert-deftest test-export-to-ox-hugo-buffer ()
+  ;; Show that the ox-hugo buffer that `orgox-notes-export-to-ox-hugo-buffer'
+  ;; populates has the same text as the note buffer but also includes the
+  ;; front matter for the Hugo site and the Org properties for the headline of
+  ;; the note.
   (with-tmp-dir
    tmp-dir
    (let ((note-buffer (find-file (f-join tmp-dir  "20260101.org")))
          (ox-hugo-buffer (find-file (f-join tmp-dir "20260101.ox-hugo.org"))))
 
      (with-current-buffer note-buffer
-       (insert "\
-* This is the first headline
-
-And it contains a link to a note asset [[20260101/hello.txt]]"))
+       (insert "* This is the first headline"))
 
      (orgox-notes-export-to-ox-hugo-buffer note-buffer
                                            ox-hugo-buffer
@@ -40,8 +36,7 @@ And it contains a link to a note asset [[20260101/hello.txt]]"))
 :EXPORT_FILE_NAME: 20260101.md
 :EXPORT_DATE: 2026-01-01
 :END:
-
-And it contains a link to a note asset [[/20260101/hello.txt]]"))
+"))
 
        (should (string= (get-buffer-content ox-hugo-buffer)
                         expected-ox-hugo-buffer-content))))))
@@ -62,8 +57,7 @@ what appears to be a note as-is:
 - [[../2025/01/20250125.org]]
 - [[file:../2025/01/20250125.org]]"))
 
-     (with-current-buffer ox-hugo-buffer
-       (orgox-notes-update-local-links "https://notes/repo/tree/main"))
+     (orgox-notes-update-local-links ox-hugo-buffer "https://notes/repo/tree/main")
 
      (let ((expected-ox-hugo-buffer-content "\
 Show how orgox-notes leaves Org links that contain a relative path to
@@ -90,8 +84,7 @@ what appears to be a note asset that isn't an Org file:
 - [[../20250125]]
 - [[file:../20250125]]"))
 
-     (with-current-buffer ox-hugo-buffer
-       (orgox-notes-update-local-links "https://notes/repo/tree/main"))
+     (orgox-notes-update-local-links ox-hugo-buffer "https://notes/repo/tree/main")
 
      (let ((expected-ox-hugo-buffer-content "\
 Show how orgox-notes updates Org links that contain a relative path to
@@ -118,8 +111,7 @@ what appears to be a note asset that isn't an Org file:
 - [[../20250125/hello.txt]]
 - [[file:../20250125/hello.txt]]"))
 
-     (with-current-buffer ox-hugo-buffer
-       (orgox-notes-update-local-links "https://notes/repo/tree/main"))
+     (orgox-notes-update-local-links ox-hugo-buffer "https://notes/repo/tree/main")
 
      (let ((expected-ox-hugo-buffer-content "\
 Show how orgox-notes updates Org links that contain a relative path to
@@ -146,8 +138,7 @@ what appears to be a note asset that is an Org file:
 - [[../20250125/hello.org]]
 - [[file:../20250125/hello.org]]"))
 
-     (with-current-buffer ox-hugo-buffer
-       (orgox-notes-update-local-links "https://notes/repo/tree/main"))
+     (orgox-notes-update-local-links ox-hugo-buffer "https://notes/repo/tree/main")
 
      (let ((expected-ox-hugo-buffer-content "\
 Show how orgox-notes updates Org links that contain a relative path to

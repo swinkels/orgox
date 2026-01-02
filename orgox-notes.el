@@ -28,6 +28,11 @@
 (require 'f)
 (require 'orgox)
 
+(defun orgox-notes-export (note-buffer ox-hugo-buffer config)
+  (pcase-let (((map :hugo-base-dir :markdown-file-name :notes-url) config))
+    (orgox-notes-export-to-ox-hugo-buffer note-buffer ox-hugo-buffer config)
+    (orgox-notes-update-local-links ox-hugo-buffer notes-url)))
+
 (defun orgox-notes-export-to-ox-hugo-buffer (note-buffer ox-hugo-buffer config)
   "Export NOTE-BUFFER to OX-HUGO-BUFFER.
 This function exports NOTE-BUFFER, which contains a note, to
@@ -38,7 +43,7 @@ information that OX-HUGO-BUFFER needs to configure for Hugo:
 :hugo-base-dir      Directory of the (local) Hugo site repository.
 :markdown-file-name Name of the markdown file ox-hugo needs to generate.
 :notes-url          URL to the online Git repository."
-  (pcase-let (((map :hugo-base-dir :markdown-file-name :notes-url) config))
+  (pcase-let (((map :hugo-base-dir :markdown-file-name) config))
     (let* ((note-buffer-name (buffer-name note-buffer))
            (date-elements (orgox-notes-extract-date-elements note-buffer-name)))
       (with-current-buffer ox-hugo-buffer
@@ -59,9 +64,7 @@ information that OX-HUGO-BUFFER needs to configure for Hugo:
         (goto-char (point-min))
         (org-next-visible-heading 1)
         (org-set-property "EXPORT_FILE_NAME" markdown-file-name)
-        (org-set-property "EXPORT_DATE" (orgox-notes-extract-date date-elements))
-
-        (orgox-notes-update-local-links notes-url)))))
+        (org-set-property "EXPORT_DATE" (orgox-notes-extract-date date-elements))))))
 
 (defun orgox-notes-extract-date-elements (buffer-name)
   "Return the date elements from BUFFER-NAME.
@@ -102,7 +105,7 @@ spaces with hyphens."
     (let ((heading (nth 4 (org-heading-components))))
       (string-replace " " "-" (downcase heading)))))
 
-(defun orgox-notes-update-local-links (notes-url)
+(defun orgox-notes-update-local-links (ox-hugo-buffer notes-url)
   "Update links to other notes and note files.
 Ox-hugo automatically converts links to other files.  This works nicely
 for other notes, but not for links to note directories and note assets.
@@ -118,12 +121,13 @@ NOTES-URL.
 
 This function works and modifies the current buffer.  It preserves the
 location of point."
-  (save-excursion
-    (goto-char (point-min))
-    (while (re-search-forward "\\[\\[\\([^]]*\\)]" nil t)
-      (let* ((link (match-string 1))
-             (new-link (save-match-data (orgox-notes--convert-link link notes-url))))
-        (replace-match new-link t t nil 1)))))
+  (with-current-buffer ox-hugo-buffer
+    (save-excursion
+      (goto-char (point-min))
+      (while (re-search-forward "\\[\\[\\([^]]*\\)]" nil t)
+        (let* ((link (match-string 1))
+               (new-link (save-match-data (orgox-notes--convert-link link notes-url))))
+          (replace-match new-link t t nil 1))))))
 
 (defun orgox-notes--convert-link (link-target notes-url)
   "Return a version of LINK that is suitable for export.
