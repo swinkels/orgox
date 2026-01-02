@@ -98,7 +98,7 @@ spaces with hyphens."
     (let ((heading (nth 4 (org-heading-components))))
       (string-replace " " "-" (downcase heading)))))
 
-(defun orgox-notes-update-local-links ()
+(defun orgox-notes-update-local-links (base-url-for-note-asset)
   "Update links to other notes and note files.
 
 ox-hugo automatically converts links to other files.  This works nicely
@@ -121,10 +121,10 @@ preserves the location of point."
     (goto-char (point-min))
     (while (re-search-forward "\\[\\[\\([^]]*\\)]" nil t)
       (let* ((link (match-string 1))
-             (new-link (save-match-data (orgox-notes--convert-link link))))
+             (new-link (save-match-data (orgox-notes--convert-link link base-url-for-note-asset))))
         (replace-match new-link t t nil 1)))))
 
-(defun orgox-notes--convert-link (link)
+(defun orgox-notes--convert-link (link base-url-for-note-asset)
   "Return a version of LINK that is suitable for export.
 If LINK is a link to a note asset that is an Org file or to a note
 directory, this function returns the link to its counterpart in the
@@ -135,7 +135,7 @@ site.  In all other cases this function returns LINK."
       (let* ((name (match-string 3 link))
              (date-elements (orgox--extract-date-elements name)))
         (format "%s/%s/%s/%s"
-                orgox-base-url-for-note-asset
+                base-url-for-note-asset
                 (nth 0 date-elements)
                 (nth 1 date-elements)
                 name))
@@ -143,7 +143,7 @@ site.  In all other cases this function returns LINK."
         (let* ((name (match-string 3 link))
                (date-elements (orgox--extract-date-elements name)))
           (format "%s/%s/%s/%s"
-                  orgox-base-url-for-note-asset
+                  base-url-for-note-asset
                   (nth 0 date-elements)
                   (nth 1 date-elements)
                   name))
@@ -151,7 +151,7 @@ site.  In all other cases this function returns LINK."
           (let* ((name (match-string 3 link))
                  (date-elements (orgox--extract-date-elements name)))
             (format "%s/%s/%s/%s"
-                    orgox-base-url-for-note-asset
+                    base-url-for-note-asset
                     (nth 0 date-elements)
                     (nth 1 date-elements)
                     name))
@@ -161,7 +161,7 @@ site.  In all other cases this function returns LINK."
                    (date-elements (orgox--extract-date-elements note-dir-name)))
               (if (string= (f-ext link) "org")
                   (format "%s/%s/%s/%s/%s"
-                          orgox-base-url-for-note-asset
+                          base-url-for-note-asset
                           (nth 0 date-elements)
                           (nth 1 date-elements)
                           note-dir-name
