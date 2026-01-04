@@ -31,10 +31,27 @@
 ;;;; Public API
 
 (defun orgox-notes-export (note-buffer ox-hugo-buffer config)
+  "Export NOTE-BUFFER to OX-HUGO-BUFFER.
+This function exports NOTE-BUFFER, which contains a note, to
+OX-HUGO-BUFFER, which will contain that same note but suitable for
+export using ox-hugo.  CONFIG is a property list that contains
+information that OX-HUGO-BUFFER needs to configure for Hugo:
+
+:hugo-base-dir      Directory of the (local) Hugo site repository.
+:markdown-file-name Name of the markdown file ox-hugo needs to generate.
+:notes-url          URL to the online Git repository."
   (pcase-let (((map :hugo-base-dir :markdown-file-name :notes-url) config))
-    (orgox-notes-export-to-ox-hugo-buffer note-buffer ox-hugo-buffer config)
-    (orgox-notes-update-local-links ox-hugo-buffer notes-url)
-    (orgox-notes-copy-note-directory-to-static note-buffer hugo-base-dir)))
+
+    (let* ((note-file-name
+            (file-name-nondirectory (buffer-file-name note-buffer)))
+           (date-elements (orgox-notes-extract-date-elements note-file-name)))
+
+      (unless date-elements
+        (error "cannot extract date from file name `%s'" note-file-name))
+
+      (orgox-notes-export-to-ox-hugo-buffer note-buffer ox-hugo-buffer config)
+      (orgox-notes-update-local-links ox-hugo-buffer notes-url)
+      (orgox-notes-copy-note-directory-to-static note-buffer hugo-base-dir))))
 
 ;;;; Developer API
 
