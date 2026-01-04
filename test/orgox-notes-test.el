@@ -7,14 +7,54 @@
 
 ;; tests for orgox-notes-export
 
+(ert-deftest export-end-to-end ()
+  ;; Smoke test `orgox-notes-export', that is, provide it with a proper note
+  ;; buffer, ox-hugo buffer and config and check that the ox-hugo buffer is
+  ;; populated.
+  ;;
+  ;; This test does not check the contents of the ox-hugo buffer to make it less
+  ;; susceptible to functional changes in that area. There are other tests that
+  ;; check the contents of that buffer.
+  (with-tmp-dir
+   tmp-dir
+   (let ((note-buffer (find-file (f-join tmp-dir  "20260101.org")))
+         (ox-hugo-buffer (find-file (f-join tmp-dir "20260101.ox-hugo.org")))
+         (config (create-config)))
+
+     (with-current-buffer note-buffer
+       (insert "* This is the first headline"))
+
+     (should (= (length (get-buffer-content ox-hugo-buffer)) 0))
+
+     (orgox-notes-export note-buffer ox-hugo-buffer config)
+
+     (should (> (length (get-buffer-content ox-hugo-buffer)) 0)))))
+
+(ert-deftest call-export-function-when-validation-passes()
+  (with-tmp-dir
+   tmp-dir
+   (let ((note-buffer (find-file (f-join tmp-dir  "20260101.org")))
+         (ox-hugo-buffer (find-file (f-join tmp-dir "20260101.ox-hugo.org")))
+         (config (create-config)))
+
+     (let ((export-function-is-called))
+       (orgox-notes-export note-buffer
+                           ox-hugo-buffer
+                           config
+                           (lambda (nb ohb c) (setq export-function-is-called t)))
+
+       (should export-function-is-called)))))
+
 (ert-deftest signal-error-when-file-name-does-not-specify-date ()
+  ;; Signal an error when the file of the note buffer doesn't have a base name
+  ;; that matches YYYYMMDD.
   (with-tmp-dir
    tmp-dir
    (let ((note-buffer (find-file (f-join tmp-dir  "About.org")))
          (ox-hugo-buffer (find-file (f-join tmp-dir "About.ox-hugo.org")))
          (config (create-config :markdown-file-name "About.md")))
 
-     (with-current-buffer (rename-buffer "20260101.org"))
+     (with-current-buffer note-buffer (rename-buffer "20260101.org"))
 
      (let* ((err
              (should-error
@@ -23,6 +63,27 @@
        (should (string=
                 (error-message-string err)
                 (format-message "cannot extract date from file name `%s'" "About.org")))))))
+
+(ert-deftest dont-call-export-function-when-validation-fails()
+  ;; Do not call the export function when the file of the note buffer doesn't
+  ;; have a base name that matches YYYYMMDD.
+  (with-tmp-dir
+   tmp-dir
+   (let ((note-buffer (find-file (f-join tmp-dir  "About.org")))
+         (ox-hugo-buffer (find-file (f-join tmp-dir "About.ox-hugo.org")))
+         (config (create-config :markdown-file-name "About.md")))
+
+     (with-current-buffer note-buffer (rename-buffer "20260101.org"))
+
+     (let ((export-function-is-called))
+       (should-error
+        (orgox-notes-export
+         note-buffer
+         ox-hugo-buffer
+         config
+         (lambda (nb ohb c) (setq export-function-is-called t))))
+
+       (should-not export-function-is-called)))))
 
 ;; tests for orgox-notes-export-to-ox-hugo-buffer
 

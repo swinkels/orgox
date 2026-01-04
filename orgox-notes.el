@@ -30,28 +30,37 @@
 
 ;;;; Public API
 
-(defun orgox-notes-export (note-buffer ox-hugo-buffer config)
+(defun orgox-notes-export (note-buffer ox-hugo-buffer config &optional export-function)
   "Export NOTE-BUFFER to OX-HUGO-BUFFER.
 This function exports NOTE-BUFFER, which contains a note, to
 OX-HUGO-BUFFER, which will contain that same note but suitable for
-export using ox-hugo.  CONFIG is a property list that contains
-information that OX-HUGO-BUFFER needs to configure for Hugo:
+export using ox-hugo.
 
+This function validates that NOTE-BUFFER belongs to a file whose base
+name specifies a date such as YYYMMDD.  If that validation fails, it
+signals an error.
+
+CONFIG is a property list that contains information that OX-HUGO-BUFFER
+needs to configure for Hugo:
 :hugo-base-dir      Directory of the (local) Hugo site repository.
 :markdown-file-name Name of the markdown file ox-hugo needs to generate.
-:notes-url          URL to the online Git repository."
-  (pcase-let (((map :hugo-base-dir :markdown-file-name :notes-url) config))
+:notes-url          URL to the online Git repository.
 
-    (let* ((note-file-name
-            (file-name-nondirectory (buffer-file-name note-buffer)))
-           (date-elements (orgox-notes-extract-date-elements note-file-name)))
+EXPORT-FUNCTION is a function with the same signature as the current
+function. When it is not nil, this function calls it to do the actual
+export instead of the default one.  EXPORT-FUNCTION is there to be able
+to unit test the validation this function does: only if validation was
+successful, it should call EXPORT-FUNCTION."
+  (let* ((note-file-name (f-filename (buffer-file-name note-buffer)))
+         (date-elements (orgox-notes-extract-date-elements note-file-name)))
 
-      (unless date-elements
-        (error "cannot extract date from file name `%s'" note-file-name))
+    (unless date-elements
+      (error "cannot extract date from file name `%s'" note-file-name))
 
-      (orgox-notes-export-to-ox-hugo-buffer note-buffer ox-hugo-buffer config)
-      (orgox-notes-update-local-links ox-hugo-buffer notes-url)
-      (orgox-notes-copy-note-directory-to-static note-buffer hugo-base-dir))))
+    (let ((args (list note-buffer ox-hugo-buffer config)))
+      (if export-function
+          (apply export-function args)
+        (apply 'orgox-notes--export args)))))
 
 ;;;; Developer API
 
@@ -115,7 +124,7 @@ non-Org note asset links to a directory or file in this folder.
 
 If the given note does not have a note directory, this function does
 nothing."
-  (let ((note-dir (f-no-ext (buffer-file-name note-file))))
+  (let ((note-dir (f-no-ext (buffer-file-name note-buffer))))
     (when (f-directory-p note-dir)
       (orgox-notes--one-way-sync note-dir (f-join hugo-base-dir "static")))))
 
@@ -151,6 +160,22 @@ The string returned has format \"YYYY-MM-DD\"."
           (nth 2 date-elements)))
 
 ;;;; Private functions
+
+(defun orgox-notes--export (note-buffer ox-hugo-buffer config)
+  "Export NOTE-BUFFER to OX-HUGO-BUFFER.
+This function exports NOTE-BUFFER, which contains a note, to
+OX-HUGO-BUFFER, which will contain that same note but suitable for
+export using ox-hugo.  CONFIG is a property list that contains
+information that OX-HUGO-BUFFER needs to configure for Hugo:
+
+:hugo-base-dir      Directory of the (local) Hugo site repository.
+:markdown-file-name Name of the markdown file ox-hugo needs to generate.
+:notes-url          URL to the online Git repository."
+  (pcase-let (((map :hugo-base-dir :markdown-file-name :notes-url) config))
+
+    (orgox-notes-export-to-ox-hugo-buffer note-buffer ox-hugo-buffer config)
+    (orgox-notes-update-local-links ox-hugo-buffer notes-url)
+    (orgox-notes-copy-note-directory-to-static note-buffer hugo-base-dir)))
 
 (defun orgox-notes--extract-slug ()
   "Return the slug from the first headline.
