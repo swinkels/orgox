@@ -2,9 +2,11 @@
 
 (defmacro with-tmp-dir (var &rest body)
   "Create a temporary directory for execution of BODY.
-This macro deletes the temporary when BODY has executed, even when it
-signalled an error.  The path to the temporary directory is assigned to
-VAR."
+This macro deletes the temporary directory when BODY has executed, even
+when it signalled an error.  It also deletes all buffers that visit a
+file that is either directly or indirectly in that directory.
+
+The path to the temporary directory is assigned to VAR."
   ;; for examples on how to use this macro, have a look at the unit tests in
   ;; this file
   `(let* ((,var (f-join temporary-file-directory (make-temp-name (format "%s-" (symbol-name ',var))))))
@@ -24,6 +26,20 @@ VAR."
            (error (format
                    "Unable to delete temporary directory %s: directory is not a subdirectory of %s"
                    ,var temporary-file-directory)))
+
+         ;; delete all buffers that visit a file in the temporary directory
+         ;; (tree)
+         ;;
+         ;; Ideally it would delete any buffer that is related to a file or
+         ;; directory in the temporary but I couldn't find a standard approach
+         ;; to collect those.
+         (dolist (buffer (buffer-list))
+           (let ((file-or-dir (buffer-file-name buffer)))
+             (when (and file-or-dir (f-child-of-p file-or-dir ,var))
+               ;; before we kill a buffer, we temporarily remove the hooks that
+               ;; would be called otherwise
+               (let ((kill-buffer-query-functions '()))
+                 (kill-buffer buffer)))))
 
          (f-delete ,var t)))))
 
@@ -46,6 +62,21 @@ VAR."
                     (should (string-prefix-p "orgox-tmp-dir" (f-filename orgox-tmp-dir)))
                     (setq created-tmp-dir orgox-tmp-dir)))
     (should-not (f-exists-p created-tmp-dir))))
+
+(ert-deftest test-delete-buffers-of-temporary-files-after-successful-completion-of-body()
+  ;; When the body to macro `with-tmp-dir' ends successfully, all buffers to
+  ;; files in the temporary directory are deleted.
+  (let (file-buffer dired-buffer)
+    (with-tmp-dir orgox-tmp-dir
+                  (setq file-buffer
+                        (find-file (f-join orgox-tmp-dir "file.txt")))
+                  (setq another-file-buffer
+                        (find-file (f-join orgox-tmp-dir "another-file.txt"))))
+    ;; You cannot use `get-buffer' to check if a buffer has been killed. If you
+    ;; do, you get nil or the buffer in a dead state. However, the buffer name
+    ;; is nil if and only if the buffer is killed.
+    (should-not (buffer-name file-buffer))
+    (should-not (buffer-name another-file-buffer))))
 
 (ert-deftest test-deletes-tmp-dir-when-body-aborts-with-error()
   ;; When the body to macro `with-tmp-dir' signals an error and aborts its
